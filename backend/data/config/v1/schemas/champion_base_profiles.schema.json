@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "profiles"],
+  "properties": {
+    "schemaVersion": {"type": "string", "minLength": 1},
+    "profiles": {"type": "array", "minItems": 9, "items": {"$ref": "#/$defs/profile"}}
+  },
+  "$defs": {
+    "scoreMap": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1}},
+    "strings": {"type": "array", "items": {"type": "string"}},
+    "profile": {
+      "type": "object", "additionalProperties": false,
+      "required": ["championId", "championName", "styleProfile", "strengthTags", "riskTags", "trainingTags"],
+      "properties": {
+        "championId": {"type": "string", "minLength": 1}, "championName": {"type": "string", "minLength": 1},
+        "styleProfile": {"$ref": "#/$defs/scoreMap"}, "strengthTags": {"$ref": "#/$defs/strings"}, "riskTags": {"$ref": "#/$defs/strings"}, "trainingTags": {"$ref": "#/$defs/strings"}
+      }
+    }
+  }
+}

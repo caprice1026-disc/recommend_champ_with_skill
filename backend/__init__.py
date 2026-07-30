@@ -1,0 +1,1 @@
+"""LoLスキルラボ backend application."""

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "quick", "detailedAdditions"],
+  "properties": {
+    "schemaVersion": {"type": "string", "minLength": 1},
+    "quick": {"type": "object", "minProperties": 8, "additionalProperties": {"type": "object"}},
+    "detailedAdditions": {"type": "object", "minProperties": 8, "additionalProperties": {"type": ["string", "number"]}}
+  }
+}

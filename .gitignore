@@ -205,3 +205,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# LoLスキルラボ local build and storage
+frontend/node_modules/
+frontend/dist/
+frontend/vite.config.js
+frontend/vite.config.d.ts
+frontend/*.tsbuildinfo
+backend/data/*.sqlite3
+backend/data/*.sqlite3-journal

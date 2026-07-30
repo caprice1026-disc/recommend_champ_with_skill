@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0.0",
+  "diagnosisVersion": "1.0.0",
+  "testDefinitionVersion": "1.0.0",
+  "abilityVersion": "1.0.0",
+  "normalizationVersion": "1.0.0",
+  "championProfileVersion": "1.0.0",
+  "recommendationConfigVersion": "1.0.0",
+  "diversityRuleVersion": "1.0.0",
+  "aptitudeRuleVersion": "1.0.0",
+  "templateVersion": "1.0.0",
+  "gamePatch": "configurable",
+  "updatedAt": "2026-07-31T00:00:00Z",
+  "files": [
+    "champion_base_profiles.json",
+    "champion_lane_profiles.json",
+    "test_definitions.json",
+    "recommendation_categories.json"
+  ]
+}
