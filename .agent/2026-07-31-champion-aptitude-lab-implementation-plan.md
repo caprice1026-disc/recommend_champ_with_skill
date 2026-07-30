@@ -1,4 +1,4 @@
-# League of Legends チャンピオン適性診断「競技ラボ」実装計画
+# League of Legends チャンピオン適性診断「LoLスキルラボ」実装計画
 
 このExecPlanは生きた計画書である。`PLANS.md`の規則に従い、`Progress`、`Surprises & Discoveries`、`Decision Log`、`Outcomes & Retrospective`を実装の各停止点で更新する。
 
@@ -13,11 +13,11 @@ PCブラウザ上で、利用者がLeague of Legendsのプレイに関係する�
 - [x] (2026-07-31) `AGENTS.md`、`PLANS.md`、要件定義書、機能・データ・計算仕様書、承認済み設計書、添付実装指示を確認した。
 - [x] (2026-07-31) 現在のリポジトリが設計書中心で、`backend`と`frontend`がまだ存在しないことを確認した。
 - [x] (2026-07-31) 初期リリースの境界を、React + TypeScript + Vite、FastAPI、設定駆動、ブラウザ内測定、SQLite任意保存として確定した。
-- [ ] 設定ファイル、JSON Schema、計算コア、推薦コア、バックエンドAPIを実装する。
-- [ ] 実際に操作できる8種の診断テストと共通TestStage契約を実装する。
-- [ ] 画面遷移、結果、詳細診断、再テスト、共有、フィードバック、保存UIを実装する。
-- [ ] 単体・API・ブラウザ検証を実行し、受入条件を監査する。
-- [ ] 完了時点でこの計画の全項目、発見事項、成果、残課題を更新する。
+- [x] (2026-07-31) 設定ファイル、JSON Schema、計算コア、推薦コア、バックエンドAPIを実装する。
+- [x] (2026-07-31) 実際に操作できる8種の診断テストと共通TestStage契約を実装する。
+- [x] (2026-07-31) 画面遷移、結果、詳細診断、再テスト、共有、フィードバック、保存UIを実装する。
+- [x] (2026-07-31) 単体・API・ブラウザ検証を実行し、受入条件を監査する。
+- [x] (2026-07-31) 完了時点でこの計画の全項目、発見事項、成果、残課題を更新する。
 
 ## Surprises & Discoveries
 
@@ -27,6 +27,10 @@ PCブラウザ上で、利用者がLeague of Legendsのプレイに関係する�
   Evidence: 設計書の「明示的に含めない範囲」と機能仕様の初期リリース境界。
 - Observation: 画面に数値ランキングを出さず、内部の能力値・信頼度・推薦スコアは計算と説明にだけ使用する必要がある。
   Evidence: 結果画面仕様と受入テストの「総合点・順位・パーセンタイルを表示しない」条件。
+- Observation: Viteの標準設定バンドルとrunnerローダーは、このWindows実行環境で`spawn EPERM`またはCommonJS依存の読み込み失敗になる。
+  Evidence: `npm.cmd run dev` / `npm.cmd run build`の再現ログ。`--configLoader native`で開発サーバーと本番ビルドが成功した。
+- Observation: 初期データの能力傾向によって成長候補・長期候補が空になり得た。
+  Evidence: 結果エンジンテストで空バケットを検出。訓練タグ付きの成長候補と、高難度要件を持つアスピレーション候補を設定へ追加し、適格性を保ったまま3層を確認した。
 
 ## Decision Log
 
@@ -54,7 +58,22 @@ PCブラウザ上で、利用者がLeague of Legendsのプレイに関係する�
 
 ## Outcomes & Retrospective
 
-実装完了時に、ユーザーが遊べる診断フロー、計算根拠、検証結果、既知の制約を記録する。この欄は完了前に空欄のままにしない。
+ユーザー向け名称を「LoLスキルラボ」へ統一し、ランディングから8種の実測テスト、結果、再テスト、詳細判定導線、共有カード、フィードバック、任意保存までを実装した。結果画面では能力・信頼度・推薦スコアの生の数値を表示せず、質的な状態と説明へ変換している。クイック本番は通常試行数、詳細本番は試行数・継続時間・回復フェーズを増やし、再テストは最新有効値で置換する。
+
+検証結果:
+
+    backend: .\.venv\Scripts\python.exe -m pytest -q -> 6 passed, 1 warning
+    frontend: npm.cmd run test:run -> 2 files / 8 tests passed
+    frontend: npm.cmd run lint -> passed
+    frontend: npm.cmd run build -> passed with Vite native config loader
+    browser: landing -> environment -> profile -> preferences -> consent -> calibration -> overview -> all 8 quick tests -> result
+    browser: share modal, feedback POST/toast, retest list and retest intro were確認済み
+
+既知の制約:
+
+- チャンピオン画像・Riot API・ログイン・クラウド同期は初期版に含めず、候補プロフィールの文字頭アバターを使用する。
+- FastAPIのTestClientが依存するStarlette/httpxの非推奨警告が1件出るが、テストとAPI応答は成功している。
+- Vite設定の`native`ローダー指定は、今回のWindowsサンドボックスでの子プロセス制約を回避するためのプロジェクト設定である。
 
 ## Context and Orientation
 
@@ -210,3 +229,4 @@ FastAPIはPydanticモデルで保存・フィードバック入力を検証し�
 ## Change Notes
 
 2026-07-31: 添付実装指示と既存設計書を統合し、空のリポジトリから設定・計算・診断・UI・API・検証までを実装する計画へ具体化した。AGENTS.mdにより、標準の`docs/superpowers/plans`ではなく`.agent`へ保存した。
+2026-07-31: 「競技ラボ」を内部のデザイン方針上の呼称として残し、利用者向けのページ名・共有カード・API表示名を「LoLスキルラボ」へ統一した。Viteの実行環境回避、3層候補のデータ補強、結果画面の数値非表示、ブラウザ完走確認を反映した。

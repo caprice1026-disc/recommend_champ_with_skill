@@ -169,9 +169,9 @@ function scoreCandidate(input: RecommendationInput, profile: ChampionLaneProfile
   const score = Math.max(nowScore, growthScore, aspirationScore);
   const hasTraining = profile.trainingTags.length > 0;
   const eligible = {
-    ready_now: !criticalDeficit && Object.keys(input.confidence).every((key) => (input.confidence[key] ?? 0) >= 0.45) && preferenceMatch >= 0.25,
-    growth_candidate: deficitCount >= 1 && deficitCount <= 3 && !criticalDeficit && hasTraining && foundationStrength >= 0.45 && styleMatch >= 0.3,
-    aspirational: preferenceMatch >= 0.55 && styleMatch >= 0.25 && !criticalDeficit && hasTraining,
+    ready_now: !criticalDeficit && shortfall <= 0.006 && foundationStrength >= 0.7 && Object.keys(input.confidence).every((key) => (input.confidence[key] ?? 0) >= 0.45) && preferenceMatch >= 0.25,
+    growth_candidate: deficitCount >= 1 && deficitCount <= 4 && hasTraining && foundationStrength >= 0.35 && styleMatch >= 0.2,
+    aspirational: preferenceMatch >= 0.45 && styleMatch >= 0.25 && hasTraining && (criticalDeficit || difficultyFit <= 0.82 || shortfall >= 0.006),
   };
   return {
     ...profile,
