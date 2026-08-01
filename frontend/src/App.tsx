@@ -4,6 +4,7 @@ import { loadChampionLanes, PREFERENCE_QUESTIONS, DEFAULT_PREFERENCES } from './
 import { calculateDiagnosticResult } from './domain/resultEngine';
 import type { TestId, TestMode, TestResult } from './domain/testTypes';
 import { TEST_DEFINITIONS } from './domain/testTypes';
+import { isPreferenceSetComplete, KEY_SEQUENCE } from './domain/testLogic';
 import type { ChampionLaneProfile, DiagnosticResult, Lane, RecommendationCandidate, ScoreMap } from './domain/types';
 import { TestStage } from './features/tests/TestStage';
 
@@ -121,11 +122,15 @@ function ProfileScreen({ profile, setProfile, onContinue }: { profile: UserProfi
 
 function PreferencesScreen({ preferences, setPreferences, onContinue }: { preferences: ScoreMap; setPreferences: (value: ScoreMap) => void; onContinue: () => void }) {
   const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState(0);
+  const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
   const current = PREFERENCE_QUESTIONS[index];
-  const choose = (value: number) => { setPreferences({ ...preferences, [current[0]]: value }); setAnswers((count) => Math.max(count, index + 1)); if (index < PREFERENCE_QUESTIONS.length - 1) setIndex((value) => value + 1); };
+  const questionKeys = PREFERENCE_QUESTIONS.map(([key]) => key);
+  const completeCurrent = () => setCompletedKeys((keys) => new Set(keys).add(current[0]));
+  const choose = (value: number) => { setPreferences({ ...preferences, [current[0]]: value }); completeCurrent(); if (index < PREFERENCE_QUESTIONS.length - 1) setIndex((value) => value + 1); };
+  const skipCurrent = () => { completeCurrent(); if (index < PREFERENCE_QUESTIONS.length - 1) setIndex((value) => value + 1); };
+  const allCompleted = isPreferenceSetComplete(questionKeys, completedKeys);
   const value = preferences[current[0]] ?? 0.5;
-  return <section className="screen screen--narrow"><Stepper current={2} labels={['環境', 'プロフィール', '好み', '同意', '校正']} /><div className="section-heading"><p className="eyebrow">03 / PLAY STYLE</p><h1>勝ち方ではなく、<br /><em>好きな動き方。</em></h1><p>正解はありません。直感で答えるほど、チャンピオンとの相性が自然に出ます。</p></div><div className="question-card"><div className="question-card__top"><span>QUESTION {String(index + 1).padStart(2, '0')} / {PREFERENCE_QUESTIONS.length}</span><span>{Math.round((answers / PREFERENCE_QUESTIONS.length) * 100)}% COMPLETE</span></div><div className="progress-line"><span style={{ width: `${((index + 1) / PREFERENCE_QUESTIONS.length) * 100}%` }} /></div><h2>{current[1]}</h2><div className="likert"><span>まったく違う</span><div>{[0, 0.25, 0.5, 0.75, 1].map((option) => <button key={option} type="button" className={Math.abs(value - option) < 0.01 ? 'is-selected' : ''} onClick={() => choose(option)}><i /></button>)}</div><span>とても当てはまる</span></div><div className="question-card__footer"><button className="text-button" type="button" onClick={() => setIndex((currentIndex) => Math.max(0, currentIndex - 1))} disabled={index === 0}>← 前の質問</button><span>選択すると次へ進みます</span><button className="text-button" type="button" onClick={() => setIndex((currentIndex) => Math.min(PREFERENCE_QUESTIONS.length - 1, currentIndex + 1))}>{index === PREFERENCE_QUESTIONS.length - 1 ? '確認する →' : 'スキップ →'}</button></div></div><div className="screen-actions"><button className="button button--secondary" type="button" onClick={() => { setPreferences(DEFAULT_PREFERENCES); onContinue(); }}>平均値で進む</button><button className="button button--primary" type="button" onClick={onContinue}>同意設定へ進む <span>→</span></button></div></section>;
+  return <section className="screen screen--narrow"><Stepper current={2} labels={['環境', 'プロフィール', '好み', '同意', '校正']} /><div className="section-heading"><p className="eyebrow">03 / PLAY STYLE</p><h1>勝ち方ではなく、<br /><em>好きな動き方。</em></h1><p>正解はありません。直感で答えるほど、チャンピオンとの相性が自然に出ます。</p></div><div className="question-card"><div className="question-card__top"><span>QUESTION {String(index + 1).padStart(2, '0')} / {PREFERENCE_QUESTIONS.length}</span><span>{Math.round((completedKeys.size / PREFERENCE_QUESTIONS.length) * 100)}% COMPLETE</span></div><div className="progress-line"><span style={{ width: `${(completedKeys.size / PREFERENCE_QUESTIONS.length) * 100}%` }} /></div><h2>{current[1]}</h2><div className="likert"><span>まったく違う</span><div>{[0, 0.25, 0.5, 0.75, 1].map((option) => <button key={option} type="button" className={completedKeys.has(current[0]) && Math.abs(value - option) < 0.01 ? 'is-selected' : ''} onClick={() => choose(option)} aria-label={`${option * 100}%` }><i /></button>)}</div><span>とても当てはまる</span></div><div className="question-card__footer"><button className="text-button" type="button" onClick={() => setIndex((currentIndex) => Math.max(0, currentIndex - 1))} disabled={index === 0}>← 前の質問</button><span>{completedKeys.has(current[0]) ? '回答済み。変更もできます' : '回答またはスキップしてください'}</span><button className="text-button" type="button" onClick={skipCurrent}>{index === PREFERENCE_QUESTIONS.length - 1 ? 'スキップして確認' : 'この質問をスキップ →'}</button></div></div><div className="screen-actions"><button className="button button--secondary" type="button" onClick={() => { setPreferences(DEFAULT_PREFERENCES); setCompletedKeys(new Set(questionKeys)); onContinue(); }}>すべてスキップして進む</button><button className="button button--primary" type="button" onClick={onContinue} disabled={!allCompleted}>同意設定へ進む <span>→</span></button></div></section>;
 }
 
 function ConsentScreen({ consent, setConsent, onContinue }: { consent: boolean; setConsent: (value: boolean) => void; onContinue: () => void }) {
@@ -135,7 +140,9 @@ function ConsentScreen({ consent, setConsent, onContinue }: { consent: boolean; 
 function CalibrationStage({ onComplete, mode }: { onComplete: () => void; mode: JourneyMode }) {
   const [stage, setStage] = useState<'pointer' | 'keyboard' | 'complete'>('pointer');
   const [point, setPoint] = useState(0);
-  const [latencies, setLatencies] = useState<number[]>([]);
+  const [pointerLatencies, setPointerLatencies] = useState<number[]>([]);
+  const [keyboardLatencies, setKeyboardLatencies] = useState<number[]>([]);
+  const [keyboardStep, setKeyboardStep] = useState(0);
   const [pulse, setPulse] = useState(0);
   const pointerStartedAt = useRef(0);
   const keyStartedAt = useRef(0);
@@ -152,24 +159,24 @@ function CalibrationStage({ onComplete, mode }: { onComplete: () => void; mode: 
     if (stage !== 'keyboard') return;
     keyStartedAt.current = performance.now();
     const handler = (event: KeyboardEvent) => {
-      if (!['q', 'w', 'e', 'r'].includes(event.key.toLowerCase())) return;
+      if (event.key.toLowerCase() !== KEY_SEQUENCE[keyboardStep]) return;
       event.preventDefault();
-      const next = [...latencies, performance.now() - keyStartedAt.current];
-      setLatencies(next);
-      if (next.length >= 4) setStage('complete');
-      else keyStartedAt.current = performance.now();
+      const next = [...keyboardLatencies, performance.now() - keyStartedAt.current];
+      setKeyboardLatencies(next);
+      if (keyboardStep + 1 >= KEY_SEQUENCE.length) setStage('complete');
+      else { setKeyboardStep((value) => value + 1); keyStartedAt.current = performance.now(); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [stage, latencies]);
+  }, [stage, keyboardLatencies, keyboardStep]);
   const hitPointer = () => {
     if (stage !== 'pointer') return;
-    const next = [...latencies, performance.now() - pointerStartedAt.current];
-    if (point >= targets.length - 1) { setLatencies(next); setStage('keyboard'); }
-    else { setLatencies(next); setPoint((value) => value + 1); pointerStartedAt.current = performance.now(); }
+    const next = [...pointerLatencies, performance.now() - pointerStartedAt.current];
+    if (point >= targets.length - 1) { setPointerLatencies(next); setKeyboardStep(0); setKeyboardLatencies([]); setStage('keyboard'); }
+    else { setPointerLatencies(next); setPoint((value) => value + 1); pointerStartedAt.current = performance.now(); }
   };
   useEffect(() => { if (stage === 'pointer') pointerStartedAt.current = performance.now(); }, [stage, point]);
-  return <section className="screen screen--calibration"><div className="calibration-head"><div><p className="eyebrow">05 / CALIBRATION</p><h1>入力の基準を<br /><em>セットします。</em></h1></div><div className="calibration-meta"><span className="status-dot status-dot--good" /> 実測イベント / {mode === 'detailed' ? '詳細判定' : mode === 'retest' ? '再テスト' : 'クイック診断'}</div></div>{!viewportReady && <div className="notice notice--amber">画面サイズが推奨値未満です。クリック判定を見やすくするため、可能ならウィンドウを広げてください。</div>}<div className="calibration-stage">{stage === 'pointer' && <><div className="calibration-instruction"><span>POINTER CHECK {point + 1} / {targets.length}</span><strong>光るターゲットをクリック</strong><small>実際の PointerEvent と performance.now() を使います</small></div><button className="calibration-target" style={{ left: targets[point].left, top: targets[point].top, transform: `translate(-50%, -50%) scale(${1 + Math.sin(pulse * 3) * 0.06})` }} type="button" onPointerDown={hitPointer} aria-label={`校正ターゲット ${point + 1}`}><span /></button></>}{stage === 'keyboard' && <div className="keyboard-check"><span>KEYBOARD CHECK 04 / 04</span><strong>Q W E R を順番に押してください</strong><small>キーの押下イベントのみ記録し、入力内容は保存しません。</small><div className="key-row">{['Q', 'W', 'E', 'R'].map((key) => <kbd key={key}>{key}</kbd>)}</div></div>}{stage === 'complete' && <div className="calibration-complete"><span className="complete-mark">✓</span><span>CALIBRATION COMPLETE</span><h2>測定の準備ができました。</h2><p>ここからのテストは、あなたの入力状態に合わせて判定します。</p><button className="button button--primary" type="button" onClick={onComplete}>診断の概要を見る <span>→</span></button></div>}</div></section>;
+  return <section className="screen screen--calibration"><div className="calibration-head"><div><p className="eyebrow">05 / CALIBRATION</p><h1>入力の基準を<br /><em>セットします。</em></h1></div><div className="calibration-meta"><span className="status-dot status-dot--good" /> 実測イベント / {mode === 'detailed' ? '詳細判定' : mode === 'retest' ? '再テスト' : 'クイック診断'}</div></div>{!viewportReady && <div className="notice notice--amber">画面サイズが推奨値未満です。クリック判定を見やすくするため、可能ならウィンドウを広げてください。</div>}<div className="calibration-stage">{stage === 'pointer' && <><div className="calibration-instruction"><span>POINTER CHECK {point + 1} / {targets.length}</span><strong>光るターゲットをクリック</strong><small>実際の PointerEvent と performance.now() を使います</small></div><button className="calibration-target" style={{ left: targets[point].left, top: targets[point].top, transform: `translate(-50%, -50%) scale(${1 + Math.sin(pulse * 3) * 0.06})` }} type="button" onPointerDown={hitPointer} aria-label={`校正ターゲット ${point + 1}`}><span /></button></>}{stage === 'keyboard' && <div className="keyboard-check"><span>KEYBOARD CHECK {keyboardStep + 1} / {KEY_SEQUENCE.length}</span><strong>Q W E R を順番に押してください</strong><small>次のキー：{KEY_SEQUENCE[keyboardStep].toUpperCase()}。4キーすべての押下を確認します。</small><div className="key-row">{KEY_SEQUENCE.map((key, index) => <kbd key={key} className={index < keyboardStep ? 'is-done' : index === keyboardStep ? 'is-current' : ''}>{key.toUpperCase()}</kbd>)}</div></div>}{stage === 'complete' && <div className="calibration-complete"><span className="complete-mark">✓</span><span>CALIBRATION COMPLETE</span><h2>測定の準備ができました。</h2><p>ここからのテストは、あなたの入力状態に合わせて判定します。</p><button className="button button--primary" type="button" onClick={onComplete}>診断の概要を見る <span>→</span></button></div>}</div></section>;
 }
 
 function OverviewScreen({ onStart, mode }: { onStart: () => void; mode: JourneyMode }) {
