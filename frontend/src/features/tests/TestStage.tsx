@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { definitionFor, type TestId, type TestMode, type TestResult } from '../../domain/testTypes';
-import { buildCompoundSequences, DECISION_SCENARIOS, nextReactionDelay, ruleForTaskSwitch, type Action } from '../../domain/testLogic';
+import { buildCompoundSequences, DECISION_SCENARIOS, interpolatePredictionPosition, nextReactionDelay, predictionTrailPoints, ruleForTaskSwitch, scoreDecisionAnswers, type Action, type PredictionPoint } from '../../domain/testLogic';
 
 interface TestStageProps {
   testId: TestId;
@@ -155,22 +155,40 @@ function CompoundInputRound({ round, detailed, onDone }: RoundProps) {
 }
 
 function PredictionRound({ round, detailed, onDone }: RoundProps) {
+  const moveDuration = 1400;
   const total = round === 'practice' ? 2 : detailed ? 12 : 8;
   const [trial, setTrial] = useState(0);
   const [visible, setVisible] = useState(true);
+  const [start, setStart] = useState<PredictionPoint>({ x: 22, y: 38 });
   const [position, setPosition] = useState({ x: 22, y: 38 });
   const [expected, setExpected] = useState({ x: 75, y: 58 });
+  const [progress, setProgress] = useState(0);
   const [scores, setScores] = useState<number[]>([]);
   const zoneRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const start = { x: 18 + Math.random() * 20, y: 25 + Math.random() * 45 };
+    const startPoint = { x: 18 + Math.random() * 20, y: 25 + Math.random() * 45 };
     const direction = { x: 35 + Math.random() * 25, y: -10 + Math.random() * 30 };
-    setPosition(start);
-    setExpected({ x: start.x + direction.x, y: start.y + direction.y });
+    const expectedPoint = { x: startPoint.x + direction.x, y: startPoint.y + direction.y };
+    setStart(startPoint);
+    setPosition(startPoint);
+    setExpected(expectedPoint);
+    setProgress(0);
     setVisible(true);
-    const timer = window.setTimeout(() => setVisible(false), 850);
-    return () => window.clearTimeout(timer);
+    let frameId: number | undefined;
+    const startedAt = performance.now();
+    const animate = (now: number) => {
+      const nextProgress = Math.min(1, (now - startedAt) / moveDuration);
+      setPosition(interpolatePredictionPosition(startPoint, expectedPoint, nextProgress));
+      setProgress(nextProgress);
+      if (nextProgress >= 1) {
+        setVisible(false);
+        return;
+      }
+      frameId = window.requestAnimationFrame(animate);
+    };
+    frameId = window.requestAnimationFrame(animate);
+    return () => { if (frameId !== undefined) window.cancelAnimationFrame(frameId); };
   }, [trial]);
 
   const handlePointer = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -189,8 +207,12 @@ function PredictionRound({ round, detailed, onDone }: RoundProps) {
 
   return (
     <div ref={zoneRef} className="measurement-zone measurement-zone--prediction" onPointerDown={handlePointer} role="application" aria-label="軌道予測測定領域">
+      <svg className="prediction-trail" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <polyline points={predictionTrailPoints(start, position, 8).map((point) => `${point.x},${point.y}`).join(' ')} />
+        {predictionTrailPoints(start, position, 6).map((point, index) => <circle key={`${trial}-${index}`} cx={point.x} cy={point.y} r={index === 5 ? 1.6 : 1.1} opacity={(index + 1) / 6} />)}
+      </svg>
       {visible ? <div className="moving-orb" style={{ left: `${position.x}%`, top: `${position.y}%` }} /> : <div className="prediction-reticle" style={{ left: `${expected.x}%`, top: `${expected.y}%` }}>?</div>}
-      <p>{trial + 1} / {total}　{visible ? '軌道を見てください' : '到達位置をクリック'}</p>
+      <p>{trial + 1} / {total}　{visible ? `軌道を観察中 ${Math.round(progress * 100)}%` : '消失しました。到達位置をクリック'}</p>
     </div>
   );
 }
@@ -259,11 +281,34 @@ function TaskSwitchRound({ round, detailed, onDone }: RoundProps) {
 function DecisionRound({ round, detailed, onDone }: RoundProps) {
   const total = round === 'practice' ? 3 : detailed ? 12 : 8;
   const [question, setQuestion] = useState(0);
-  const [correct, setCorrect] = useState(0);
+  const [answers, setAnswers] = useState<Array<number | null>>(() => Array(total).fill(null));
   const scenario = DECISION_SCENARIOS[question % DECISION_SCENARIOS.length];
   const options = useMemo(() => scenario.options, [scenario]);
-  const choose = (isCorrect: boolean) => { const next = correct + (isCorrect ? 1 : 0); if (question + 1 >= total) onDone(next / total, next / total, next, total, total); else { setCorrect(next); setQuestion((value) => value + 1); } };
-  return <div className="decision-panel"><p className="decision-panel__timer">状況 {question + 1} / {total}</p><h3>{scenario.prompt}</h3><div className="decision-options">{options.map((option) => <button className="decision-option" type="button" key={option.title} onClick={() => choose(option.correct)}><strong>{option.title}</strong><span>{option.detail}</span></button>)}</div></div>;
+  const selectedIndex = answers[question] ?? null;
+  const choose = (optionIndex: number) => setAnswers((current) => current.map((answer, index) => index === question ? optionIndex : answer));
+  const goNext = () => {
+    if (selectedIndex === null) return;
+    if (question + 1 >= total) {
+      const result = scoreDecisionAnswers(DECISION_SCENARIOS, answers);
+      onDone(result.correct / total, result.correct / total, result.correct, total, total);
+      return;
+    }
+    setQuestion((value) => value + 1);
+  };
+  return (
+    <div className="decision-panel">
+      <p className="decision-panel__timer">状況 {question + 1} / {total}　回答済み {answers.filter((answer) => answer !== null).length}</p>
+      <h3>{scenario.prompt}</h3>
+      <div className="decision-options">
+        {options.map((option, optionIndex) => <button className={`decision-option ${selectedIndex === optionIndex ? 'is-selected' : ''}`} type="button" key={option.title} aria-pressed={selectedIndex === optionIndex} onClick={() => choose(optionIndex)}><strong>{option.title}</strong><span>{option.detail}</span></button>)}
+      </div>
+      <div className="decision-navigation">
+        <button className="button button--ghost" type="button" onClick={() => setQuestion((value) => Math.max(0, value - 1))} disabled={question === 0}>← 前の状況</button>
+        <span>{selectedIndex === null ? '選択してください' : '選択済み。前の状況に戻って変更できます'}</span>
+        <button className="button button--primary" type="button" onClick={goNext} disabled={selectedIndex === null}>{question + 1 >= total ? '判定を確定' : '次の状況へ →'}</button>
+      </div>
+    </div>
+  );
 }
 
 function MentalRound({ round, detailed, onDone }: RoundProps) {

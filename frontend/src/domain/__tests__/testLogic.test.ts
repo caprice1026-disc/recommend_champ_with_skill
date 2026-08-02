@@ -3,9 +3,12 @@ import {
   DECISION_SCENARIOS,
   KEY_SEQUENCE,
   buildCompoundSequences,
+  interpolatePredictionPosition,
   isPreferenceSetComplete,
   nextReactionDelay,
+  predictionTrailPoints,
   ruleForTaskSwitch,
+  scoreDecisionAnswers,
 } from '../testLogic';
 
 describe('diagnostic interaction logic', () => {
@@ -53,5 +56,25 @@ describe('diagnostic interaction logic', () => {
     expect(new Set(DECISION_SCENARIOS.map((scenario) => scenario.prompt)).size).toBe(DECISION_SCENARIOS.length);
     expect(DECISION_SCENARIOS.every((scenario) => scenario.options.length === 3)).toBe(true);
     expect(DECISION_SCENARIOS.every((scenario) => scenario.options.filter((option) => option.correct).length === 1)).toBe(true);
+  });
+
+  it('interpolates the prediction orb and exposes its full trail', () => {
+    const start = { x: 20, y: 30 };
+    const end = { x: 80, y: 70 };
+    expect(interpolatePredictionPosition(start, end, 0)).toEqual(start);
+    expect(interpolatePredictionPosition(start, end, 0.5)).toEqual({ x: 50, y: 50 });
+    expect(interpolatePredictionPosition(start, end, 1)).toEqual(end);
+    expect(predictionTrailPoints(start, end, 4)).toEqual([
+      { x: 20, y: 30 },
+      { x: 40, y: 43.33333333333333 },
+      { x: 60, y: 56.666666666666664 },
+      { x: 80, y: 70 },
+    ]);
+  });
+
+  it('scores the latest answer for each revisitable decision scenario', () => {
+    const scenarios = DECISION_SCENARIOS.slice(0, 2);
+    expect(scoreDecisionAnswers(scenarios, [0, 1])).toEqual({ answered: 2, correct: 2 });
+    expect(scoreDecisionAnswers(scenarios, [2, null])).toEqual({ answered: 1, correct: 0 });
   });
 });

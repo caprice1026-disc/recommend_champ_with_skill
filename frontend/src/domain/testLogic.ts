@@ -2,6 +2,24 @@ export type Action = 'click' | 'rightClick' | 'q' | 'e';
 
 export const KEY_SEQUENCE = ['q', 'w', 'e', 'r'] as const;
 
+export interface PredictionPoint {
+  x: number;
+  y: number;
+}
+
+export function interpolatePredictionPosition(start: PredictionPoint, end: PredictionPoint, progress: number): PredictionPoint {
+  const normalized = Math.min(1, Math.max(0, progress));
+  return {
+    x: start.x + (end.x - start.x) * normalized,
+    y: start.y + (end.y - start.y) * normalized,
+  };
+}
+
+export function predictionTrailPoints(start: PredictionPoint, end: PredictionPoint, count: number): PredictionPoint[] {
+  const pointCount = Math.max(2, Math.floor(count));
+  return Array.from({ length: pointCount }, (_, index) => interpolatePredictionPosition(start, end, index / (pointCount - 1)));
+}
+
 const REACTION_DELAY_MIN = 650;
 const REACTION_DELAY_MAX = 2200;
 const REACTION_DELAY_GAP = 250;
@@ -70,6 +88,21 @@ export interface DecisionOption {
 export interface DecisionScenario {
   prompt: string;
   options: DecisionOption[];
+}
+
+export function scoreDecisionAnswers(scenarios: readonly DecisionScenario[], answers: readonly (number | null)[]): { answered: number; correct: number } {
+  return answers.reduce(
+    (result, selectedIndex, questionIndex) => {
+      if (selectedIndex === null) return result;
+      const scenario = scenarios[questionIndex % scenarios.length];
+      const option = scenario?.options[selectedIndex];
+      return {
+        answered: result.answered + 1,
+        correct: result.correct + (option?.correct ? 1 : 0),
+      };
+    },
+    { answered: 0, correct: 0 },
+  );
 }
 
 export const DECISION_SCENARIOS: DecisionScenario[] = [

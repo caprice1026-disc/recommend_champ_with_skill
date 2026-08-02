@@ -15,7 +15,7 @@ League of Legendsのプレイ適性を、ブラウザ上の実測テストとプ
 バックエンドをターミナル1で起動します。
 
 ```powershell
-.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload --port 8000
+.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload --port 8080
 ```
 
 フロントエンドをターミナル2で起動します。
@@ -27,6 +27,16 @@ npm.cmd run dev
 ```
 
 ブラウザで `http://localhost:5173` を開いてください。開発サーバー未起動時も、フロントエンドは内蔵の候補データへフォールバックします。
+
+## Dockerで起動
+
+Dockerではフロントエンドをビルドした静的ファイルをFastAPIが配信します。バックエンドの既定ポートは8080です。
+
+```powershell
+docker compose up --build
+```
+
+ブラウザで `http://localhost:8080` を開いてください。匿名の診断結果とフィードバックは `skill-lab-data` ボリュームへ保存されます。停止する場合は `docker compose down` を実行します。
 
 ## 検証
 

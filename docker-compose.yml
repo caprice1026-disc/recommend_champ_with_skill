@@ -1,0 +1,14 @@
+services:
+  lol-skill-lab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      LOL_SKILL_LAB_DB: /app/runtime-data/lol_skill_lab.sqlite3
+    volumes:
+      - skill-lab-data:/app/runtime-data
+
+volumes:
+  skill-lab-data:

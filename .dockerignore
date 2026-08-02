@@ -1,0 +1,12 @@
+.git
+.agent
+.agents
+.codex
+.venv
+**/__pycache__
+frontend/node_modules
+frontend/dist
+frontend/*.tsbuildinfo
+backend/data/*.sqlite3
+.data
+*.pyc
