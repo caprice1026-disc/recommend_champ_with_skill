@@ -3,7 +3,14 @@ import type { AbilityResult, ChampionLaneProfile, DiagnosticResult, FeatureVecto
 import type { TestResult } from './testTypes';
 
 const scoreFor = (results: TestResult[], id: TestResult['testId'], fallback = 0.5): number => results.find((result) => result.testId === id)?.score ?? fallback;
-const qualityFor = (results: TestResult[], id: TestResult['testId']): number => results.find((result) => result.testId === id)?.quality ?? 0.4;
+const effectiveQuality = (result: TestResult): number => {
+  const validRatio = result.totalTrials > 0 ? Math.min(1, Math.max(0, result.validTrials / result.totalTrials)) : 0;
+  return Math.min(result.quality, validRatio);
+};
+const qualityFor = (results: TestResult[], id: TestResult['testId']): number => {
+  const result = results.find((item) => item.testId === id);
+  return result ? effectiveQuality(result) : 0.4;
+};
 
 export function featuresFromTestResults(results: TestResult[]): FeatureVector {
   const reaction = scoreFor(results, 'reaction');
@@ -59,7 +66,7 @@ export function calculateDiagnosticResult(
 ): DiagnosticResult {
   const abilityResult = calculateAbilityScores(featuresFromTestResults(results));
   const confidence: Partial<Record<keyof typeof abilityResult.abilities, number>> = {};
-  const quality = results.length === 0 ? 0.35 : results.reduce((sum, result) => sum + result.quality, 0) / results.length;
+  const quality = results.length === 0 ? 0.35 : results.reduce((sum, result) => sum + effectiveQuality(result), 0) / results.length;
   for (const key of Object.keys(abilityResult.abilities)) {
     const confidenceResult = calculateConfidence({
       validSampleScore: quality,

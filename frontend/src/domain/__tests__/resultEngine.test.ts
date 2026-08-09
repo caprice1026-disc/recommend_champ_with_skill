@@ -37,4 +37,13 @@ describe('diagnostic result engine', () => {
     expect(merged.find((item) => item.testId === 'reaction')?.score).toBe(0.55);
     expect(merged).toHaveLength(2);
   });
+
+  it('does not call a result stable when its valid-trial ratio is low', () => {
+    const lowValidityResults = [
+      'reaction', 'clickAccuracy', 'inputControl', 'prediction',
+      'attentionDistribution', 'taskSwitching', 'decision', 'mentalStability',
+    ].map((testId) => ({ ...resultFor(testId as TestResult['testId'], 0.9), validTrials: 0 })) as TestResult[];
+    const result = calculateDiagnosticResult(lowValidityResults, DEFAULT_PREFERENCES, DEFAULT_CHAMPION_LANES);
+    expect(Object.values(result.confidence).every((value) => (value ?? 1) < 0.8)).toBe(true);
+  });
 });

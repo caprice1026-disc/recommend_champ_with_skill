@@ -58,6 +58,11 @@ describe('diagnostic interaction logic', () => {
     expect(DECISION_SCENARIOS.every((scenario) => scenario.options.filter((option) => option.correct).length === 1)).toBe(true);
   });
 
+  it('describes decision options without value-loaded correctness cues', () => {
+    const leadingTerms = /安全|危険|確実|成功|失敗|損失|利益|孤立|主導権|有利|リターン|連携|勝ち筋|賭け|避ける|渡す|高める|分断|撃破|リスク/;
+    expect(DECISION_SCENARIOS.flatMap((scenario) => scenario.options).every((option) => !leadingTerms.test(option.detail))).toBe(true);
+  });
+
   it('interpolates the prediction orb and exposes its full trail', () => {
     const start = { x: 20, y: 30 };
     const end = { x: 80, y: 70 };
@@ -76,5 +81,18 @@ describe('diagnostic interaction logic', () => {
     const scenarios = DECISION_SCENARIOS.slice(0, 2);
     expect(scoreDecisionAnswers(scenarios, [0, 1])).toEqual({ answered: 2, correct: 2 });
     expect(scoreDecisionAnswers(scenarios, [2, null])).toEqual({ answered: 1, correct: 0 });
+  });
+
+  it('resolves a small viewport as a warning instead of an unfinished check', async () => {
+    const logic = await import('../testLogic');
+    expect(logic.viewportStatus).toBeTypeOf('function');
+    expect(logic.viewportStatus(800, 600)).toBe('warning');
+    expect(logic.viewportStatus(1024, 640)).toBe('ready');
+  });
+
+  it('counts only score-qualified trials as valid measurement samples', async () => {
+    const logic = await import('../testLogic');
+    expect(logic.countValidTrials).toBeTypeOf('function');
+    expect(logic.countValidTrials([0.1, 0.2, 0.4, 0.9], 0.35)).toBe(2);
   });
 });

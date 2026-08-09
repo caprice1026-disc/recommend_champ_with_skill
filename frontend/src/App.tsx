@@ -4,7 +4,7 @@ import { loadChampionLanes, PREFERENCE_QUESTIONS, DEFAULT_PREFERENCES } from './
 import { calculateDiagnosticResult } from './domain/resultEngine';
 import type { TestId, TestMode, TestResult } from './domain/testTypes';
 import { TEST_DEFINITIONS } from './domain/testTypes';
-import { isPreferenceSetComplete, KEY_SEQUENCE } from './domain/testLogic';
+import { isPreferenceSetComplete, KEY_SEQUENCE, viewportStatus } from './domain/testLogic';
 import type { ChampionLaneProfile, DiagnosticResult, Lane, RecommendationCandidate, ScoreMap } from './domain/types';
 import { TestStage } from './features/tests/TestStage';
 
@@ -103,9 +103,9 @@ function LandingScreen({ onStart }: { onStart: () => void }) {
 }
 
 function EnvironmentScreen({ onContinue }: { onContinue: () => void }) {
-  const [checks, setChecks] = useState({ browser: true, viewport: false, pointer: false, keyboard: false });
+  const [checks, setChecks] = useState({ browser: true, viewport: typeof window === 'undefined' ? 'ready' as const : viewportStatus(window.innerWidth, window.innerHeight), pointer: false, keyboard: false });
   useEffect(() => {
-    const update = () => setChecks((value) => ({ ...value, viewport: window.innerWidth >= 1024 && window.innerHeight >= 640 }));
+    const update = () => setChecks((value) => ({ ...value, viewport: viewportStatus(window.innerWidth, window.innerHeight) }));
     update();
     window.addEventListener('resize', update);
     const pointerTimer = window.setTimeout(() => setChecks((value) => ({ ...value, pointer: true })), 250);
@@ -113,7 +113,8 @@ function EnvironmentScreen({ onContinue }: { onContinue: () => void }) {
     return () => { window.removeEventListener('resize', update); window.clearTimeout(pointerTimer); window.clearTimeout(keyboardTimer); };
   }, []);
   const ready = checks.browser && checks.pointer && checks.keyboard;
-  return <section className="screen screen--narrow"><Stepper current={0} labels={['環境', 'プロフィール', '好み', '同意', '校正']} /><div className="section-heading"><p className="eyebrow">01 / ENVIRONMENT CHECK</p><h1>測定できる状態を<br /><em>つくっています。</em></h1><p>LoLスキルラボは、ブラウザ上の実際の入力・時間・ポインター動作を使って測定します。テスト前に環境を確認します。</p></div><div className="check-list">{[['browser', '対応ブラウザ', 'Chrome / Edge / Firefox'], ['viewport', '画面サイズ', '1024 × 640 以上を推奨'], ['pointer', 'ポインター入力', 'PointerEvent を検出'], ['keyboard', 'キーボード入力', 'Q / W / E / R を検出']].map(([key, title, detail]) => <div className={`check-row ${checks[key as keyof typeof checks] ? 'is-ready' : ''}`} key={key}><span className="check-row__icon">{checks[key as keyof typeof checks] ? '✓' : '…'}</span><span><strong>{title}</strong><small>{detail}</small></span><span className="check-row__status">{checks[key as keyof typeof checks] ? 'READY' : 'CHECKING'}</span></div>)}</div><div className="notice notice--teal"><span>ⓘ</span><span>画面が小さい場合も診断は進められますが、クリック精度の測定は広い画面ほど安定します。</span></div><button className="button button--primary" type="button" onClick={onContinue} disabled={!ready}>プロフィールを設定する <span>→</span></button></section>;
+  const rows: Array<[keyof typeof checks, string, string]> = [['browser', '対応ブラウザ', 'Chrome / Edge / Firefox'], ['viewport', '画面サイズ', '1024 × 640 以上を推奨'], ['pointer', 'ポインター入力', 'PointerEvent を検出'], ['keyboard', 'キーボード入力', 'Q / W / E / R を検出']];
+  return <section className="screen screen--narrow"><Stepper current={0} labels={['環境', 'プロフィール', '好み', '同意', '校正']} /><div className="section-heading"><p className="eyebrow">01 / ENVIRONMENT CHECK</p><h1>測定できる状態を<br /><em>つくっています。</em></h1><p>LoLスキルラボは、ブラウザ上の実際の入力・時間・ポインター動作を使って測定します。テスト前に環境を確認します。</p></div><div className="check-list">{rows.map(([key, title, detail]) => { const value = checks[key]; const isReady = key === 'viewport' ? value === 'ready' : value === true; const isWarning = key === 'viewport' && !isReady; return <div className={`check-row ${isReady ? 'is-ready' : ''} ${isWarning ? 'is-warning' : ''}`} key={key}><span className="check-row__icon">{isReady ? '✓' : isWarning ? '△' : '…'}</span><span><strong>{title}</strong><small>{detail}</small></span><span className="check-row__status">{isReady ? 'READY' : isWarning ? 'WARNING' : 'CHECKING'}</span></div>; })}</div><div className="notice notice--teal"><span>ⓘ</span><span>画面が小さい場合も診断は進められますが、クリック精度の測定は広い画面ほど安定します。</span></div><button className="button button--primary" type="button" onClick={onContinue} disabled={!ready}>プロフィールを設定する <span>→</span></button></section>;
 }
 
 function ProfileScreen({ profile, setProfile, onContinue }: { profile: UserProfile; setProfile: (value: UserProfile) => void; onContinue: () => void }) {

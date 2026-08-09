@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { definitionFor, type TestId, type TestMode, type TestResult } from '../../domain/testTypes';
-import { buildCompoundSequences, DECISION_SCENARIOS, interpolatePredictionPosition, nextReactionDelay, predictionTrailPoints, ruleForTaskSwitch, scoreDecisionAnswers, type Action, type PredictionPoint } from '../../domain/testLogic';
+import { buildCompoundSequences, countValidTrials, DECISION_SCENARIOS, interpolatePredictionPosition, nextReactionDelay, predictionTrailPoints, ruleForTaskSwitch, scoreDecisionAnswers, type Action, type PredictionPoint } from '../../domain/testLogic';
 
 interface TestStageProps {
   testId: TestId;
@@ -57,7 +57,8 @@ function ReactionRound({ round, detailed, onDone }: RoundProps) {
     const next = [...scores, clamp(score)];
     setScores(next);
     if (trial + 1 >= total) {
-      onDone(next.reduce((sum, value) => sum + value, 0) / next.length, next.length / total, next.length, total, next.length);
+      const validTrials = countValidTrials(next, 0.35);
+      onDone(next.reduce((sum, value) => sum + value, 0) / next.length, validTrials / total, validTrials, total, next.length);
     } else {
       setTrial((value) => value + 1);
     }
@@ -103,7 +104,10 @@ function ClickAccuracyRound({ round, detailed, onDone }: RoundProps) {
     const score = clamp(1 - distance / (target.radius * 2.3));
     const next = [...scores, score];
     setScores(next);
-    if (trial + 1 >= total) onDone(next.reduce((sum, value) => sum + value, 0) / next.length, next.filter((value) => value >= 0.35).length / total, next.length, total, next.length);
+    if (trial + 1 >= total) {
+      const validTrials = countValidTrials(next, 0.35);
+      onDone(next.reduce((sum, value) => sum + value, 0) / next.length, validTrials / total, validTrials, total, next.length);
+    }
     else setTrial((value) => value + 1);
   };
 
@@ -201,17 +205,19 @@ function PredictionRound({ round, detailed, onDone }: RoundProps) {
     const score = clamp(1 - distance / 48);
     const next = [...scores, score];
     setScores(next);
-    if (trial + 1 >= total) onDone(next.reduce((sum, value) => sum + value, 0) / next.length, next.filter((value) => value > 0.2).length / total, next.length, total, next.length);
+    if (trial + 1 >= total) {
+      const validTrials = countValidTrials(next, 0.2);
+      onDone(next.reduce((sum, value) => sum + value, 0) / next.length, validTrials / total, validTrials, total, next.length);
+    }
     else setTrial((value) => value + 1);
   };
 
   return (
     <div ref={zoneRef} className="measurement-zone measurement-zone--prediction" onPointerDown={handlePointer} role="application" aria-label="軌道予測測定領域">
-      <svg className="prediction-trail" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      {visible && <><svg className="prediction-trail" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
         <polyline points={predictionTrailPoints(start, position, 8).map((point) => `${point.x},${point.y}`).join(' ')} />
         {predictionTrailPoints(start, position, 6).map((point, index) => <circle key={`${trial}-${index}`} cx={point.x} cy={point.y} r={index === 5 ? 1.6 : 1.1} opacity={(index + 1) / 6} />)}
-      </svg>
-      {visible ? <div className="moving-orb" style={{ left: `${position.x}%`, top: `${position.y}%` }} /> : <div className="prediction-reticle" style={{ left: `${expected.x}%`, top: `${expected.y}%` }}>?</div>}
+      </svg><div className="moving-orb" style={{ left: `${position.x}%`, top: `${position.y}%` }} /></>}
       <p>{trial + 1} / {total}　{visible ? `軌道を観察中 ${Math.round(progress * 100)}%` : '消失しました。到達位置をクリック'}</p>
     </div>
   );
@@ -319,7 +325,7 @@ function MentalRound({ round, detailed, onDone }: RoundProps) {
   const totalPerPhase = round === 'practice' ? 2 : detailed ? 5 : 4;
   const [target, setTarget] = useState({ x: 50, y: 50 });
   useEffect(() => setTarget({ x: 20 + Math.random() * 60, y: 20 + Math.random() * 60 }), [phase, trial]);
-  const pointer = (event: React.PointerEvent<HTMLDivElement>) => { const rect = event.currentTarget.getBoundingClientRect(); const x = ((event.clientX - rect.left) / rect.width) * 100; const y = ((event.clientY - rect.top) / rect.height) * 100; const score = clamp(1 - Math.sqrt((x - target.x) ** 2 + (y - target.y) ** 2) / 44); const nextScores = [...scores, score]; if (trial + 1 >= totalPerPhase) { if (phase + 1 >= phases.length) onDone(nextScores.reduce((sum, value) => sum + value, 0) / nextScores.length, nextScores.filter((value) => value > 0.3).length / nextScores.length, nextScores.length, totalPerPhase * phases.length, nextScores.length); else { setScores(nextScores); setPhase((value) => value + 1); setTrial(0); } } else { setScores(nextScores); setTrial((value) => value + 1); } };
+  const pointer = (event: React.PointerEvent<HTMLDivElement>) => { const rect = event.currentTarget.getBoundingClientRect(); const x = ((event.clientX - rect.left) / rect.width) * 100; const y = ((event.clientY - rect.top) / rect.height) * 100; const score = clamp(1 - Math.sqrt((x - target.x) ** 2 + (y - target.y) ** 2) / 44); const nextScores = [...scores, score]; if (trial + 1 >= totalPerPhase) { if (phase + 1 >= phases.length) { const validTrials = countValidTrials(nextScores, 0.3); onDone(nextScores.reduce((sum, value) => sum + value, 0) / nextScores.length, validTrials / (totalPerPhase * phases.length), validTrials, totalPerPhase * phases.length, nextScores.length); } else { setScores(nextScores); setPhase((value) => value + 1); setTrial(0); } } else { setScores(nextScores); setTrial((value) => value + 1); } };
   return <div className={`measurement-zone measurement-zone--mental measurement-zone--${phase}`} onPointerDown={pointer}><div className="target target--mental" style={{ left: `${target.x}%`, top: `${target.y}%` }}><span /></div><p>{phases[phase]}フェーズ　{trial + 1} / {totalPerPhase}</p></div>;
 }
 
@@ -348,6 +354,6 @@ export function TestStage({ testId, mode, onComplete, onAbort }: TestStageProps)
     }
     onComplete({ testId, score, quality, abilityKeys: testId === 'reaction' ? ['reaction'] : testId === 'clickAccuracy' ? ['clickAccuracy'] : testId === 'inputControl' ? ['inputControl'] : testId === 'prediction' ? ['prediction'] : testId === 'attentionDistribution' ? ['attentionDistribution'] : testId === 'taskSwitching' ? ['taskSwitching'] : testId === 'decision' ? ['decisionSpeed', 'decisionQuality'] : ['pressureStability', 'recovery'], validTrials, totalTrials, completed: true, rawTrialCount });
   };
-  if (intro) return <section className="screen screen--test-intro"><TestHeader testId={testId} round="説明" onAbort={onAbort} /><div className="test-explainer"><div className="test-explainer__number">{definition.group}</div><h3>{definition.description}</h3><p>{definition.operation}</p>{testId === 'prediction' && <ol className="test-guide"><li><strong>観察</strong><span>動く対象を目で追います。</span></li><li><strong>消失</strong><span>対象が消え、?が表示されます。</span></li><li><strong>予測</strong><span>到着すると考えた位置をクリックします。</span></li></ol>}{testId === 'attentionDistribution' && <ol className="test-guide"><li><strong>中央</strong><span>動く円の位置へポインターを合わせ続けます。</span></li><li><strong>周辺</strong><span>周辺にSPACEが出たら見逃さないようにします。</span></li><li><strong>反応</strong><span>SPACEキーを押して周辺イベントに反応します。</span></li></ol>}{testId === 'taskSwitching' && <ol className="test-guide"><li><strong>色を見る</strong><span>ターゲットの色を確認します。</span></li><li><strong>対応を選ぶ</strong><span>画面下の最新ルールを読みます。</span></li><li><strong>切替</strong><span>ルール変更後は対応表が変わります。</span></li></ol>}{testId === 'mentalStability' && <div className="notice notice--amber">このテストでは軽いプレッシャー演出が入ります。いつでも中断できます。終了後に演出の目的を説明します。</div>}<button className="button button--primary" type="button" onClick={() => setIntro(false)}>{mode === 'retest' ? '再テストを始める' : '練習を始める'} <span>→</span></button></div></section>;
+  if (intro) return <section className="screen screen--test-intro"><TestHeader testId={testId} round="説明" onAbort={onAbort} /><div className="test-explainer"><div className="test-explainer__number">{definition.group}</div><h3>{definition.description}</h3><p>{definition.operation}</p>{testId === 'prediction' && <ol className="test-guide"><li><strong>観察</strong><span>動く対象を目で追います。</span></li><li><strong>消失</strong><span>対象が消え、軌道も消えます。</span></li><li><strong>予測</strong><span>到着すると考えた位置をクリックします。正解位置は画面に表示されません。</span></li></ol>}{testId === 'attentionDistribution' && <ol className="test-guide"><li><strong>中央</strong><span>動く円の位置へポインターを合わせ続けます。</span></li><li><strong>周辺</strong><span>周辺にSPACEが出たら見逃さないようにします。</span></li><li><strong>反応</strong><span>SPACEキーを押して周辺イベントに反応します。</span></li></ol>}{testId === 'taskSwitching' && <ol className="test-guide"><li><strong>色を見る</strong><span>ターゲットの色を確認します。</span></li><li><strong>対応を選ぶ</strong><span>画面下の最新ルールを読みます。</span></li><li><strong>切替</strong><span>ルール変更後は対応表が変わります。</span></li></ol>}{testId === 'mentalStability' && <div className="notice notice--amber">このテストでは軽いプレッシャー演出が入ります。いつでも中断できます。終了後に演出の目的を説明します。</div>}<button className="button button--primary" type="button" onClick={() => setIntro(false)}>{mode === 'retest' ? '再テストを始める' : '練習を始める'} <span>→</span></button></div></section>;
   return <section className="screen screen--test"><TestHeader testId={testId} round={round === 'practice' ? '練習' : detailed ? '詳細本番' : mode === 'retest' ? '再テスト' : '本番'} onAbort={onAbort} /><div className="test-stage__body">{!roundReady ? <div className="round-transition"><span className="status-dot status-dot--good" /><h3>練習が終わりました</h3><p>ここからの本番ラウンドが、適性計算へ反映されます。</p><button className="button button--primary" type="button" onClick={() => setRoundReady(true)}>本番を開始する →</button></div> : <RoundView key={`${testId}-${mode}-${round}`} testId={testId} round={round} detailed={detailed} onDone={handleDone} />}</div></section>;
 }
