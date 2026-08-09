@@ -1,4 +1,5 @@
 import { calculateAbilityScores, calculateConfidence, calculateRecommendations } from './scoring';
+import { deriveAptitudeTitle } from './aptitudeTitles';
 import type { AbilityResult, ChampionLaneProfile, DiagnosticResult, FeatureVector, ScoreMap } from './types';
 import type { TestResult } from './testTypes';
 
@@ -77,7 +78,13 @@ export function calculateDiagnosticResult(
     });
     confidence[key as keyof typeof confidence] = confidenceResult.value;
   }
-  const result: DiagnosticResult = { ...abilityResult, confidence, mode, createdAt: new Date().toISOString() };
+  const result: DiagnosticResult = {
+    ...abilityResult,
+    confidence,
+    aptitudeTitle: deriveAptitudeTitle(abilityResult.abilities, preferences),
+    mode,
+    createdAt: new Date().toISOString(),
+  };
   result.recommendations = calculateRecommendations({
     abilities: result.abilities,
     confidence,

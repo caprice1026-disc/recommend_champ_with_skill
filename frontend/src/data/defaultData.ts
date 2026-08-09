@@ -1,4 +1,5 @@
 import type { ChampionLaneProfile, Lane, ScoreMap } from '../domain/types';
+import { CATALOG_CHAMPION_LANES, CHAMPION_METADATA } from './championCatalog';
 
 export const PREFERENCE_QUESTIONS = [
   ['aggression', '自分から戦闘を仕掛けたい'],
@@ -36,6 +37,7 @@ function profile(
   strengthTags: string[],
   riskTags: string[],
 ): ChampionLaneProfile {
+  const source = CHAMPION_METADATA[championId];
   return {
     championId,
     championName,
@@ -49,10 +51,13 @@ function profile(
     strengthTags,
     riskTags,
     trainingTags,
+    iconUrl: source?.iconUrl,
+    wikiUrl: source?.wikiUrl,
+    difficultyNote: source?.difficultyNote,
   };
 }
 
-export const DEFAULT_CHAMPION_LANES: ChampionLaneProfile[] = [
+const EXISTING_DEFAULT_CHAMPION_LANES: ChampionLaneProfile[] = [
   profile('gragas', 'グラガス', 'TOP', { prediction: 0.7, decisionQuality: 0.75, pressureStability: 0.7, recovery: 0.75 }, { prediction: 0.4, decisionQuality: 0.5 }, { aggression: 0.55, teamCoordination: 0.7, stabilityPreference: 0.7 }, ['prediction', 'decisionQuality'], ['判断の切り替え', '安定した対応'], ['距離管理']),
   profile('ahri', 'アーリ', 'MID', { reaction: 0.7, clickAccuracy: 0.7, prediction: 0.75, taskSwitching: 0.7, decisionSpeed: 0.75 }, { clickAccuracy: 0.45, prediction: 0.45 }, { aggression: 0.7, burstPreference: 0.75, riskTaking: 0.65, rangePreference: 0.65 }, ['clickAccuracy', 'prediction'], ['移動予測', '瞬間判断'], ['スキル精度']),
   profile('orianna', 'オリアナ', 'MID', { attentionDistribution: 0.8, decisionQuality: 0.85, pressureStability: 0.75 }, { attentionDistribution: 0.5, decisionQuality: 0.55 }, { teamSupport: 0.7, teamCoordination: 0.85, lateGameFocus: 0.75, stabilityPreference: 0.75 }, ['attentionDistribution', 'decisionQuality'], ['盤面把握', '計画的な判断'], ['位置取り']),
@@ -68,6 +73,8 @@ export const DEFAULT_CHAMPION_LANES: ChampionLaneProfile[] = [
   profile('azir', 'アジール', 'MID', { reaction: 0.85, clickAccuracy: 0.85, inputControl: 0.85, prediction: 0.85, attentionDistribution: 0.85, taskSwitching: 0.85, decisionSpeed: 0.85, decisionQuality: 0.85, pressureStability: 0.85, recovery: 0.85 }, { reaction: 0.88, clickAccuracy: 0.88, inputControl: 0.88, prediction: 0.88, attentionDistribution: 0.88, taskSwitching: 0.88, decisionSpeed: 0.88, decisionQuality: 0.88, pressureStability: 0.88, recovery: 0.88 }, { aggression: 0.5, teamSupport: 0.5, independence: 0.5, teamCoordination: 0.5, earlyGameFocus: 0.5, lateGameFocus: 0.5, burstPreference: 0.5, sustainedCombat: 0.5, reactivePlay: 0.5, riskTaking: 0.5, complexityEnjoyment: 0.5, stabilityPreference: 0.5, highVariancePreference: 0.5, rangePreference: 0.5, meleePreference: 0.5, mapInfluencePreference: 0.5 }, ['complexityEnjoyment', 'taskSwitching', 'decisionQuality'], ['高度な操作', '長期の伸びしろ'], ['入力負荷', '判断密度']),
   profile('vayne', 'ヴェイン', 'BOT', { reaction: 0.8, clickAccuracy: 0.85, inputControl: 0.8, prediction: 0.75, taskSwitching: 0.75, decisionSpeed: 0.8 }, { clickAccuracy: 0.65, inputControl: 0.55 }, { aggression: 0.75, lateGameFocus: 0.9, sustainedCombat: 0.9, complexityEnjoyment: 0.85, highVariancePreference: 0.8, rangePreference: 0.75 }, ['clickAccuracy', 'inputControl'], ['精密操作', '継続戦闘'], ['入力と判断の負荷']),
 ];
+
+export const DEFAULT_CHAMPION_LANES: ChampionLaneProfile[] = [...EXISTING_DEFAULT_CHAMPION_LANES, ...CATALOG_CHAMPION_LANES];
 
 export const DEFAULT_PREFERENCES: ScoreMap = Object.fromEntries(PREFERENCE_QUESTIONS.map(([key]) => [key, 0.5]));
 

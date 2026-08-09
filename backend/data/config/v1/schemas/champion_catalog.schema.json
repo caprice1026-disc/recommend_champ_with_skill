@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "metadata", "profiles"],
+  "properties": {
+    "schemaVersion": {"type": "string", "minLength": 1},
+    "metadata": {"type": "array", "minItems": 26, "items": {"$ref": "#/$defs/metadata"}},
+    "profiles": {"type": "array", "minItems": 12, "items": {"$ref": "#/$defs/profile"}}
+  },
+  "$defs": {
+    "scoreMap": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1}},
+    "strings": {"type": "array", "items": {"type": "string"}},
+    "metadata": {
+      "type": "object", "additionalProperties": false,
+      "required": ["championId", "championName", "iconUrl", "wikiUrl", "difficultyNote"],
+      "properties": {
+        "championId": {"type": "string", "minLength": 1}, "championName": {"type": "string", "minLength": 1},
+        "iconUrl": {"type": "string", "format": "uri-reference"}, "wikiUrl": {"type": "string", "format": "uri-reference"},
+        "difficultyNote": {"type": "string", "minLength": 1}
+      }
+    },
+    "profile": {
+      "type": "object", "additionalProperties": false,
+      "required": ["championId", "championName", "lane", "profileMode", "styleProfile", "minimumRequirements", "requirementWeights", "preferenceProfile", "difficultyProfile", "strengthTags", "riskTags", "trainingTags", "iconUrl", "wikiUrl", "difficultyNote"],
+      "properties": {
+        "championId": {"type": "string", "minLength": 1}, "championName": {"type": "string", "minLength": 1},
+        "lane": {"enum": ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"]}, "profileMode": {"enum": ["derived", "explicit"]},
+        "styleProfile": {"$ref": "#/$defs/scoreMap"}, "minimumRequirements": {"$ref": "#/$defs/scoreMap"}, "requirementWeights": {"$ref": "#/$defs/scoreMap"},
+        "preferenceProfile": {"$ref": "#/$defs/scoreMap"}, "difficultyProfile": {"$ref": "#/$defs/scoreMap"},
+        "strengthTags": {"$ref": "#/$defs/strings"}, "riskTags": {"$ref": "#/$defs/strings"}, "trainingTags": {"$ref": "#/$defs/strings"},
+        "iconUrl": {"type": "string", "format": "uri-reference"}, "wikiUrl": {"type": "string", "format": "uri-reference"},
+        "difficultyNote": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

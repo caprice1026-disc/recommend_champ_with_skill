@@ -29,6 +29,8 @@ describe('diagnostic result engine', () => {
     expect(result.recommendations?.readyNow.primary).toBeDefined();
     expect(result.recommendations?.growthCandidate.primary).toBeDefined();
     expect(result.recommendations?.aspirational.primary).toBeDefined();
+    expect(result.aptitudeTitle).toBeDefined();
+    expect(result.aptitudeTitle?.name).toBeTruthy();
   });
 
   it('replaces a retested test with the latest valid result', () => {

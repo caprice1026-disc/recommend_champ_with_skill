@@ -104,6 +104,16 @@ export interface ChampionLaneProfile {
   riskTags: string[];
   trainingTags: string[];
   reasonTags?: string[];
+  iconUrl?: string;
+  wikiUrl?: string;
+  difficultyNote?: string;
+}
+
+export interface AptitudeTitle {
+  id: string;
+  name: string;
+  description: string;
+  signals: string[];
 }
 
 export interface RecommendationInput {
@@ -147,5 +157,6 @@ export interface DiagnosticResult extends AbilityResult {
   sessionId?: string;
   mode?: 'quick' | 'detailed' | 'retest';
   recommendations?: RecommendationSet;
+  aptitudeTitle: AptitudeTitle;
   createdAt?: string;
 }
