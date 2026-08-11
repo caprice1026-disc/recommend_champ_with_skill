@@ -21,7 +21,7 @@
 - [ ] Cloudflare移行後の同等性を確認してから旧FastAPI/Docker/Pythonを削除する。
 - [x] (2026-08-12) README、CI、ExecPlanを更新した。最終監査で新規Issue #29〜#37を登録し、修正・検証後にクローズする。
 - [x] (2026-08-12) 監査修正をコミット`d7d3a69`、追加監査修正を`4bf6198`として`main`へpushした。GitHub Issue #29〜#38へ修正内容をコメントし、すべてクローズした。現在のOpen Issueは0件である。
-- [x] (2026-08-12) 最終コード監査でIssue #39を登録し、クリック精度の実測サブスコア欠落をTDDで修正・検証した。Issue #39は修正コメント後にクローズする。
+- [x] (2026-08-12) 最終コード監査でIssue #39を登録し、クリック精度の実測サブスコア欠落をTDDで修正・検証した。修正コミット`d6d687e`を`main`へpushし、修正コメント後にIssue #39を`completed`でクローズした。
 - [ ] Cloudflare本番Previewを認証済みアカウントと実在D1 IDで検証し、検証後に旧構成を削除する。
 
 ## Surprises & Discoveries
@@ -59,11 +59,11 @@
 
 ローカル移行と最終コード監査の修正は完了した。`npm run lint`、`npm run config:validate`、`npm run catalog:check`、62件のVitest、`npm run build`、D1 local migration、Cloudflare Viteランタイムのhealth／SPA／保存／削除／feedback smoke testを通過した。監査ではDockerfileの旧frontend参照、feedback HTTPエラーの成功表示、判断時間の二重計上、Riotネットワーク例外、セッション同意の残留、Riot同意チェックボックスのキーボード操作不能、Workerの正規化値範囲不足、READMEのテスト件数・Secret手順不足をIssue #29〜#37として登録し、修正した。追加監査では集約フィールド内部へ生入力を混入できる問題をIssue #38として登録し、許可リスト・深さ・キー検証で修正した。Issue #39ではクリック精度テストの実測メトリクスが最終`subscores`へ引き継がれない問題を検出し、`clickAccuracy`をFeatureVectorへ戻す修正と回帰テストを追加した。ブラウザでは環境確認、全スキップ、同意、ポインター校正、QWER校正、概要、全8テスト、結果表示、保存・削除・feedback、再読み込み、SPA直接URL、モバイル幅を確認し、診断コアの移行前後同等性は固定入力の回帰テストで保持した。
 
-監査修正後のホスト上のWorkers相当smokeは、health／SPAが200、診断保存が201、削除が204、feedbackが201となった。生成済みWrangler設定とローカルD1の永続化先が一致するよう、built migrationとDocker起動コマンドへ`--persist-to`を明示した。Docker Desktop Linux Engineが起動していないため、実Dockerイメージbuild自体は未検証である。
+監査修正後のホスト上のWorkers相当smokeは、health／SPAが200、診断保存が201、削除が204、feedbackが201、生データフィールド拒否が400となった。生成済みWrangler設定とローカルD1の永続化先が一致するよう、built migrationとDocker起動コマンドへ`--persist-to`を明示した。Docker Desktop Linux Engineが起動していないため、実Dockerイメージbuild自体は未検証である。
 
 `wrangler whoami`は未認証だったため、本番Cloudflare Preview、実在D1へのremote migration、Riot API上流接続は未検証である。D1 IDやRiot APIキーを捏造せず、旧FastAPI/Docker/Pythonはこの状態では削除しない。認証済み環境でPreviewを検証した後に旧構成を削除し、mainへpushすることが残作業である。
 
-ローカル移行コミット`7cd0414`は2026-08-12に`origin/main`へpush済みである。監査修正コミット`d7d3a69`も`main`へpush済みで、GitHub Issue #29〜#37は修正コメント付きでクローズ済みである。
+ローカル移行コミット`7cd0414`は2026-08-12に`origin/main`へpush済みである。監査修正コミット`d7d3a69`、追加監査修正`4bf6198`、クリックサブスコア修正`d6d687e`も`main`へpush済みで、GitHub Issue #29〜#39は修正コメント付きでクローズ済みである。
 
 ## Context and Orientation
 
@@ -176,3 +176,5 @@ Workerの入口は`fetch(request: Request, env: Env, ctx: ExecutionContext): Pro
 更新記録: 2026-08-12、監査修正を`d7d3a69`として`main`へpushした。GitHub Issue #29〜#37へ修正内容と検証範囲をコメントし、すべて`completed`でクローズした。検索結果上のOpen Issueは0件である。Cloudflare認証、remote D1、実Riot API、Docker Desktop Linux Engineは引き続き外部環境依存の未検証項目として残し、認証・実在ID・Secretなしに旧FastAPI/Docker/Pythonを削除しない方針を維持する。
 
 更新記録: 2026-08-12、追加Issue #38の再現テストが実装前に201で通過してしまうことを確認した。`subscores`、推薦bucket、推薦candidateを明示的な集約形として検証し、ネストしたrawCoordinates等のキー、過剰な深さ・配列・文字列を拒否するよう修正した。修正後はWorker API 15テストを含む全13ファイル62テスト、lint、設定検証、カタログ検証、build、local D1 smoke、実ブラウザの全診断フローを成功させた。READMEの実績件数を62へ更新し、Issue #38へ修正コメントを追加してクローズした。
+
+更新記録: 2026-08-12、最終コードベース監査でクリック精度の実測メトリクスが最終`subscores.clickAccuracy`へ伝播しない問題をIssue #39として登録した。修正前の失敗テストを確認後、`FeatureVector.clickAccuracy`へメトリクスを引き継ぎ、回帰テストを追加した。対象テスト、全62テスト、lint、設定・カタログ検証、build、local D1、Workers相当API smokeを再実行し、コミット`d6d687e`を`main`へpushした。Issue #39へ検証結果をコメントし、`completed`でクローズした。
