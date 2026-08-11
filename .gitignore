@@ -214,3 +214,4 @@ frontend/vite.config.d.ts
 frontend/*.tsbuildinfo
 backend/data/*.sqlite3
 backend/data/*.sqlite3-journal
+lol_skill_lab_cloudflare_architecture_design.docx
