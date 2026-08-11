@@ -79,9 +79,13 @@ const validPayload = {
   diagnosisVersion: '1.0.0',
   consentToSave: true,
   abilityVector: { reaction: 0.7 },
-  subscores: { reaction: { medianMs: 240 } },
+  subscores: { inputControl: { mouseSequenceControl: 0.7 }, clickAccuracy: { hitRate: 0.7 } },
   confidence: { reaction: 0.8 },
-  recommendations: { readyNow: { primary: { championId: 'ahri', lane: 'MID' } } },
+  recommendations: {
+    readyNow: { primary: { championId: 'ahri', lane: 'MID' }, alternatives: [], explanation: 'ready' },
+    growthCandidate: { alternatives: [], explanation: 'growth' },
+    aspirational: { alternatives: [], explanation: 'aspirational' },
+  },
   aptitudeTypes: { primary: 'steady_controller', ruleVersion: '1.0.0' },
   configVersions: { diagnosisVersion: '1.0.0' },
   createdAt: '2026-08-12T00:00:00.000Z',
@@ -118,6 +122,28 @@ describe('Cloudflare Worker API', () => {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ ...validPayload, rawLogs: [{ x: 1 }] }),
+      }),
+      environment(db),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'INVALID_PAYLOAD' } });
+    expect(db.queries).toHaveLength(0);
+  });
+
+  it('rejects raw input fields nested inside aggregate objects', async () => {
+    const db = new FakeDb();
+    const response = await worker.fetch(
+      new Request('https://example.test/api/diagnosis-results', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ...validPayload,
+          subscores: {
+            inputControl: { mouseSequenceControl: 0.8 },
+            rawCoordinates: [{ x: 10, y: 20 }],
+          },
+        }),
       }),
       environment(db),
     );
