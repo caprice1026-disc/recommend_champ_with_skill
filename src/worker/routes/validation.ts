@@ -13,8 +13,8 @@ function hasOnlyKeys(value: Record<string, unknown>, allowed: Set<string>): bool
   return Object.keys(value).every((key) => allowed.has(key));
 }
 
-function isFiniteNumberRecord(value: unknown): value is Record<string, number> {
-  return isRecord(value) && Object.values(value).every((item) => typeof item === 'number' && Number.isFinite(item));
+function isNormalizedNumberRecord(value: unknown): value is Record<string, number> {
+  return isRecord(value) && Object.values(value).every((item) => typeof item === 'number' && Number.isFinite(item) && item >= 0 && item <= 1);
 }
 
 function isStringRecord(value: unknown): value is Record<string, string> {
@@ -25,7 +25,7 @@ export function parseDiagnosisPayload(value: unknown): { ok: true; payload: Diag
   if (!isRecord(value) || !hasOnlyKeys(value, DIAGNOSIS_KEYS)) return { ok: false, message: '保存できない入力項目が含まれています' };
   if (value.consentToSave !== true) return { ok: false, message: '保存への明示同意が必要です', consentRequired: true } as { ok: false; message: string; consentRequired: true };
   if (typeof value.diagnosisVersion !== 'string' || value.diagnosisVersion.length === 0 || value.diagnosisVersion.length > 50) return { ok: false, message: 'diagnosisVersionが不正です' };
-  if (!isFiniteNumberRecord(value.abilityVector) || !isRecord(value.subscores) || !isRecord(value.recommendations) || !isRecord(value.aptitudeTypes) || !isFiniteNumberRecord(value.confidence) || !isStringRecord(value.configVersions)) return { ok: false, message: '集約済み診断データが不正です' };
+  if (!isNormalizedNumberRecord(value.abilityVector) || !isRecord(value.subscores) || !isRecord(value.recommendations) || !isRecord(value.aptitudeTypes) || !isNormalizedNumberRecord(value.confidence) || !isStringRecord(value.configVersions)) return { ok: false, message: '集約済み診断データが不正です' };
   if (typeof value.createdAt !== 'string' || Number.isNaN(Date.parse(value.createdAt))) return { ok: false, message: 'createdAtが不正です' };
   let riotContext: PublicRiotContext | undefined;
   if (value.riotContext !== undefined && value.riotContext !== null) {

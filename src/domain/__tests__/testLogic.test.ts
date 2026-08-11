@@ -11,6 +11,7 @@ import {
   scoreDecisionAnswers,
   createDiagnosticTestQueue,
   trackingRetention,
+  upsertDecisionResponseTime,
 } from '../testLogic';
 
 describe('diagnostic interaction logic', () => {
@@ -83,6 +84,14 @@ describe('diagnostic interaction logic', () => {
     const scenarios = DECISION_SCENARIOS.slice(0, 2);
     expect(scoreDecisionAnswers(scenarios, [0, 1])).toEqual({ answered: 2, correct: 2 });
     expect(scoreDecisionAnswers(scenarios, [2, null])).toEqual({ answered: 1, correct: 0 });
+  });
+
+  it('replaces a revisited decision response time instead of appending a duplicate', () => {
+    const first = upsertDecisionResponseTime([120, null, 300], 1, 450);
+    const revisited = upsertDecisionResponseTime(first, 1, 180);
+    expect(first).toEqual([120, 450, 300]);
+    expect(revisited).toEqual([120, 180, 300]);
+    expect(revisited.filter((value): value is number => value !== null)).toHaveLength(3);
   });
 
   it('resolves a small viewport as a warning instead of an unfinished check', async () => {

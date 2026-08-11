@@ -57,7 +57,7 @@ export function RiotVerificationPanel({ context, onVerified }: RiotVerificationP
         </select>
       </div>
       <label className="toggle-row riot-consent-row" htmlFor="riot-consent">
-        <input id="riot-consent" type="checkbox" checked={consentToRiot} onChange={(event) => setConsentToRiot(event.target.checked)} />
+        <input id="riot-consent" className="visually-hidden-control" type="checkbox" checked={consentToRiot} onChange={(event) => setConsentToRiot(event.target.checked)} />
         <span className="toggle" />
         <strong>Riot情報の取得に同意する</strong>
       </label>

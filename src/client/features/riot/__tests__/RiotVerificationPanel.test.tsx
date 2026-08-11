@@ -39,6 +39,7 @@ describe('RiotVerificationPanel', () => {
     const tagLine = container.querySelector<HTMLInputElement>('#riot-tag-line');
     const consent = container.querySelector<HTMLInputElement>('#riot-consent');
     expect(gameName).not.toBeNull();
+    expect(consent?.classList.contains('visually-hidden-control')).toBe(true);
     act(() => {
       if (gameName && tagLine) {
         const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;

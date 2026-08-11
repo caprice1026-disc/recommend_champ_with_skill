@@ -15,6 +15,7 @@
     "catalog:generate": "tsx scripts/generate-champion-catalog.ts",
     "catalog:check": "tsx scripts/generate-champion-catalog.ts --check",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:local:built": "wrangler d1 migrations apply DB --local --persist-to .wrangler --config dist/lol_skill_lab/wrangler.json",
     "types": "wrangler types"
   },
   "dependencies": {

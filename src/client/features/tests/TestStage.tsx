@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { definitionFor, type TestId, type TestMode, type TestResult, type TestMetrics } from '../../../domain/testTypes';
-import { buildCompoundSequences, buildDecisionScenarioOrder, countValidTrials, DECISION_SCENARIOS, interpolatePredictionPosition, nextReactionDelay, predictionTrailPoints, ruleForTaskSwitch, scoreDecisionAnswers, trackingRetention, type Action, type PredictionPoint, type TrackingSample } from '../../../domain/testLogic';
+import { buildCompoundSequences, buildDecisionScenarioOrder, countValidTrials, DECISION_SCENARIOS, interpolatePredictionPosition, nextReactionDelay, predictionTrailPoints, ruleForTaskSwitch, scoreDecisionAnswers, trackingRetention, upsertDecisionResponseTime, type Action, type PredictionPoint, type TrackingSample } from '../../../domain/testLogic';
 import type { TestConfiguration } from '../../data/runtimeConfig';
 
 interface TestStageProps {
@@ -434,7 +434,7 @@ function DecisionRound({ round, detailed, configuration, onDone }: RoundProps) {
   const [question, setQuestion] = useState(0);
   const [answers, setAnswers] = useState<Array<number | null>>(() => Array(total).fill(null));
   const answersRef = useRef<Array<number | null>>(Array(total).fill(null));
-  const responseTimesRef = useRef<number[]>([]);
+  const responseTimesRef = useRef<Array<number | null>>(Array(total).fill(null));
   const answerChangesRef = useRef(0);
   const timeoutsRef = useRef(0);
   const questionStartedAtRef = useRef(performance.now());
@@ -445,7 +445,7 @@ function DecisionRound({ round, detailed, configuration, onDone }: RoundProps) {
 
   const finishDecision = (finalAnswers: Array<number | null>) => {
     const result = scoreDecisionAnswers(orderedScenarios, finalAnswers);
-    const responseTimesMs = responseTimesRef.current;
+    const responseTimesMs = responseTimesRef.current.filter((value): value is number => value !== null);
     const speedScore = mean(responseTimesMs.map((time) => clamp(1 - time / (maxSeconds * 1000))));
     onDone(result.correct / total, result.answered / total, result.correct, total, total, {
       decision: {
@@ -462,7 +462,7 @@ function DecisionRound({ round, detailed, configuration, onDone }: RoundProps) {
 
   const advance = (timedOut: boolean) => {
     const elapsed = timedOut ? maxSeconds * 1000 : performance.now() - questionStartedAtRef.current;
-    responseTimesRef.current = [...responseTimesRef.current, elapsed];
+    responseTimesRef.current = upsertDecisionResponseTime(responseTimesRef.current, question, elapsed);
     if (timedOut) timeoutsRef.current += 1;
     if (question + 1 >= total) finishDecision([...answersRef.current]);
     else setQuestion((value) => value + 1);

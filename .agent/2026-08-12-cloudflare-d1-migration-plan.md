@@ -19,8 +19,8 @@
 - [x] (2026-08-12) Riot ID確認とキャッシュ境界を実装する。ただし秘密情報がない環境でもテストできる設計にする。
 - [x] (2026-08-12) ローカルCloudflare Vite開発、build、設定検証、Vitest、ブラウザの診断導線を検証する。
 - [ ] Cloudflare移行後の同等性を確認してから旧FastAPI/Docker/Pythonを削除する。
-- [x] (2026-08-12) README、CI、ExecPlanを更新した。GitHubの未解決Issueは0件で、追加登録が必要な重複Issueはなかった。
-- [x] (2026-08-12) ローカル移行コミット`7cd0414`を`main`へpushした。
+- [x] (2026-08-12) README、CI、ExecPlanを更新した。最終監査で新規Issue #29〜#37を登録し、修正・検証後にクローズする。
+- [ ] 監査修正をコミットして`main`へpushする。
 - [ ] Cloudflare本番Previewを認証済みアカウントと実在D1 IDで検証し、検証後に旧構成を削除する。
 
 ## Surprises & Discoveries
@@ -56,11 +56,13 @@
 
 ## Outcomes & Retrospective
 
-ローカル移行は完了した。`npm run lint`、`npm run config:validate`、`npm run catalog:check`、43件のVitest、`npm run build`、D1 local migration、Cloudflare Viteランタイムのhealth／SPA／保存／削除smoke testを通過した。ブラウザでは環境確認、全スキップ、同意、ポインター校正、QWER校正、概要、診断ステージ開始を確認し、診断コアの移行前後同等性は固定入力の回帰テストで保持した。
+ローカル移行と最終コード監査の修正は完了した。`npm run lint`、`npm run config:validate`、`npm run catalog:check`、61件のVitest、`npm run build`、D1 local migration、Cloudflare Viteランタイムのhealth／SPA／保存／削除／feedback smoke testを通過した。監査ではDockerfileの旧frontend参照、feedback HTTPエラーの成功表示、判断時間の二重計上、Riotネットワーク例外、セッション同意の残留、Riot同意チェックボックスのキーボード操作不能、Workerの正規化値範囲不足、READMEのテスト件数・Secret手順不足をIssue #29〜#37として登録し、修正した。ブラウザでは環境確認、全スキップ、同意、ポインター校正、QWER校正、概要、診断ステージ開始を確認し、診断コアの移行前後同等性は固定入力の回帰テストで保持した。
+
+監査修正後のホスト上のWorkers相当smokeは、health／SPAが200、診断保存が201、削除が204、feedbackが201となった。生成済みWrangler設定とローカルD1の永続化先が一致するよう、built migrationとDocker起動コマンドへ`--persist-to`を明示した。Docker Desktop Linux Engineが起動していないため、実Dockerイメージbuild自体は未検証である。
 
 `wrangler whoami`は未認証だったため、本番Cloudflare Preview、実在D1へのremote migration、Riot API上流接続は未検証である。D1 IDやRiot APIキーを捏造せず、旧FastAPI/Docker/Pythonはこの状態では削除しない。認証済み環境でPreviewを検証した後に旧構成を削除し、mainへpushすることが残作業である。
 
-ローカル移行コミット`7cd0414`は2026-08-12に`origin/main`へpush済みである。
+ローカル移行コミット`7cd0414`は2026-08-12に`origin/main`へpush済みである。監査修正はこのExecPlan更新と合わせて次のコミットで`main`へpushする。
 
 ## Context and Orientation
 
@@ -167,3 +169,5 @@ Workerの入口は`fetch(request: Request, env: Env, ctx: ExecutionContext): Pro
 更新記録: 2026-08-12、Riot確認UIの設計仕様を`docs/superpowers/specs/2026-08-12-riot-verification-ui-design.md`へ記録した。Client helper、UI、Worker validation、APIエラーの日本語化を実装し、Riot未設定のローカルブラウザでエラー表示後も校正へ進めることを確認した。Cloudflareログインは引き続き未認証であるため、実Riot成功フローとPreview検証は未完了とする。
 
 更新記録: 2026-08-12、Riot確認UIとプライバシー境界を含む実装を`a692afb`としてコミットした。現行コードで`npm.cmd run test:run`（11 files / 55 tests）、lint、設定・カタログ検証、build、local D1 migration、`git diff --check`を再確認した。buildとWranglerの初回sandbox実行は`spawn EPERM`だったが、制限外の単独実行では成功した。READMEのRiot操作・データ境界・ブラウザ確認項目も更新済みである。
+
+更新記録: 2026-08-12、最終コードベース監査でIssue #29〜#37をGitHubへ登録した。TDDで再現テストを先に追加し、Dockerfileを現行Workers/D1ローカル実行へ合わせ、feedbackのHTTPエラー処理、判断時間の上書き計測、Riotネットワークエラー標準化、診断セッションリセット、Riot同意チェックボックスのキーボード操作、Workerの0〜1正規化値検証を修正した。READMEのテスト件数を13ファイル61テストへ更新し、`RIOT_API_KEY` Secret登録手順を追加した。全テスト61件、lint、設定検証、カタログ検証、build、local D1 migration、`git diff --check`、Workers相当smokeを再実行して成功した。

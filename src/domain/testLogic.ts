@@ -164,6 +164,13 @@ export function scoreDecisionAnswers(scenarios: readonly DecisionScenario[], ans
   );
 }
 
+export function upsertDecisionResponseTime(times: readonly (number | null)[], questionIndex: number, elapsedMs: number): Array<number | null> {
+  const next = [...times];
+  while (next.length <= questionIndex) next.push(null);
+  next[questionIndex] = elapsedMs;
+  return next;
+}
+
 export function buildDecisionScenarioOrder(total: number, random: () => number = Math.random): number[] {
   const base = Array.from({ length: DECISION_SCENARIOS.length }, (_, index) => index);
   const order: number[] = [];

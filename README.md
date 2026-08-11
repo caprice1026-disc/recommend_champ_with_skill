@@ -34,6 +34,12 @@ Cloudflare Vite開発サーバーを起動します。
 
 ブラウザで`http://localhost:5173/`を開いてください。`/api/*`はWorker、SPAの画面はStatic Assetsとして扱われます。設定はAPIから取得せず、`data/config/v1`からbuildへ取り込まれます。
 
+DockerでWorkers + Static Assetsのローカル相当環境を8080番ポートで起動する場合は、Docker Engineを起動したうえで実行します。
+
+    docker compose up --build
+
+ブラウザで`http://localhost:8080/`を開いてください。Docker版もFastAPIを起動せず、生成済みWorkers設定へmigrationを適用したうえでWranglerのlocal WorkerとD1を使用します。
+
 ## Riot API（任意）
 
 `.dev.vars.example`を`.dev.vars`へコピーし、Riot APIキーを設定してください。.dev.varsはgitignore対象で、APIキーをGit、クライアントbundle、source map、D1、ログへ置かないでください。
@@ -72,6 +78,7 @@ Riot ID確認は同意画面の任意パネルから実行でき、診断結果�
     npx wrangler login
     npx wrangler d1 create lol-skill-lab
     npx wrangler d1 migrations apply DB --remote
+    npx wrangler secret put RIOT_API_KEY
     npm.cmd run deploy
 
 Cloudflareの料金、無料枠、D1容量、WorkerとRiot APIのレート制限は現在の公式資料を確認してから運用してください。Previewでhealth、SPA直接URL、診断、保存・削除、フィードバック、Riot確認を検証してから本番へ反映します。
@@ -81,7 +88,7 @@ Cloudflareの料金、無料枠、D1容量、WorkerとRiot APIのレート制限
 - Riot ID確認の成功結果は、PUUIDをクライアントへ返さず、Worker内で1時間だけD1へキャッシュします。期限切れ・破損キャッシュは再確認へフォールバックします。
 - メンタル安定性テストの各フェーズは、画面再レンダーでタイマーがリセットされないように固定した時間計測で進行します。
 - 保存APIは本文のContent-Lengthがない場合も実バイト数を確認し、256 KiBを超える入力を拒否します。
-- 2026-08-12時点のローカル確認では、全49テスト、型チェック、設定検証、カタログ同期確認、Vite/Workerビルド、ローカルD1マイグレーション、ブラウザでのクイック診断完走と保存・削除・フィードバックを確認済みです。Cloudflare PreviewはWrangler認証が必要です。
+- 2026-08-12時点のローカル確認では、13ファイル61テスト、型チェック、設定検証、カタログ同期確認、Vite/Workerビルド、ローカルD1マイグレーション、Workers相当のhealth/SPA/保存・削除・フィードバックを確認済みです。Cloudflare PreviewはWrangler認証が必要です。
 
 ## 旧構成について
 

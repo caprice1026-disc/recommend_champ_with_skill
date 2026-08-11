@@ -34,7 +34,12 @@ export async function verifyRiotId(input: { gameName: string; tagLine: string; p
   if (!env.RIOT_API_KEY) throw new RiotUpstreamError(503, 'Riot API確認は現在利用できません');
   const host = ACCOUNT_HOSTS[input.platformRegion];
   const endpoint = `https://${host}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(input.gameName)}/${encodeURIComponent(input.tagLine)}`;
-  const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${env.RIOT_API_KEY}` } });
+  let response: Response;
+  try {
+    response = await fetch(endpoint, { headers: { Authorization: `Bearer ${env.RIOT_API_KEY}` } });
+  } catch {
+    throw new RiotUpstreamError(502, 'Riot APIに接続できません');
+  }
   if (!response.ok) {
     const status = response.status === 429 ? 429 : response.status === 404 ? 404 : 502;
     throw new RiotUpstreamError(status, status === 404 ? 'Riot IDが見つかりません' : status === 429 ? 'Riot APIの利用制限に達しました' : 'Riot APIに接続できません');

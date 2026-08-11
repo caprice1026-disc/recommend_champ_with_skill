@@ -175,6 +175,22 @@ describe('Cloudflare Worker API', () => {
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'INVALID_PAYLOAD' } });
   });
 
+  it('rejects diagnosis ability and confidence values outside the normalized range', async () => {
+    const db = new FakeDb();
+    const response = await worker.fetch(
+      new Request('https://example.test/api/diagnosis-results', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...validPayload, abilityVector: { reaction: 1.1 }, confidence: { reaction: -0.1 } }),
+      }),
+      environment(db),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'INVALID_PAYLOAD' } });
+    expect(db.queries).toHaveLength(0);
+  });
+
   it('stores only the public Riot context fields in a diagnosis payload', async () => {
     const db = new FakeDb();
     const response = await worker.fetch(
@@ -297,5 +313,22 @@ describe('Cloudflare Worker API', () => {
     const errorBody = await rateLimitedResponse.text();
     expect(errorBody).not.toContain('private upstream body');
     expect(errorBody).not.toContain('secret-riot-key');
+  });
+
+  it('normalizes Riot network failures without exposing the upstream error', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('private network detail'); }));
+    const response = await worker.fetch(
+      new Request('https://example.test/api/riot/verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ consentToRiot: true, gameName: 'Hodaka', tagLine: 'JP1', platformRegion: 'americas' }),
+      }),
+      { ...environment(), RIOT_API_KEY: 'secret-riot-key' },
+    );
+
+    expect(response.status).toBe(502);
+    const errorBody = await response.text();
+    expect(errorBody).toContain('RIOT_UPSTREAM_ERROR');
+    expect(errorBody).not.toContain('private network detail');
   });
 });
