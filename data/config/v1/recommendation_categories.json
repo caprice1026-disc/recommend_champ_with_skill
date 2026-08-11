@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "1.0.0",
+  "categories": [
+    {"id":"ready_now","name":"今すぐ能力を発揮しやすい","displayOrder":1,"primaryCount":1,"alternativeCount":2},
+    {"id":"growth_candidate","name":"練習すれば伸びそう","displayOrder":2,"primaryCount":1,"alternativeCount":2},
+    {"id":"aspirational","name":"好みは合うが難易度が高い","displayOrder":3,"primaryCount":1,"alternativeCount":2}
+  ]
+}

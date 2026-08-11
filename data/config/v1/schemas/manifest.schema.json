@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "diagnosisVersion", "testDefinitionVersion", "abilityVersion", "normalizationVersion", "championProfileVersion", "recommendationConfigVersion", "diversityRuleVersion", "aptitudeRuleVersion", "templateVersion", "gamePatch", "updatedAt", "files"],
+  "properties": {
+    "schemaVersion": {"type": "string", "minLength": 1},
+    "diagnosisVersion": {"type": "string", "minLength": 1},
+    "testDefinitionVersion": {"type": "string", "minLength": 1},
+    "abilityVersion": {"type": "string", "minLength": 1},
+    "normalizationVersion": {"type": "string", "minLength": 1},
+    "championProfileVersion": {"type": "string", "minLength": 1},
+    "recommendationConfigVersion": {"type": "string", "minLength": 1},
+    "diversityRuleVersion": {"type": "string", "minLength": 1},
+    "aptitudeRuleVersion": {"type": "string", "minLength": 1},
+    "templateVersion": {"type": "string", "minLength": 1},
+    "gamePatch": {"type": "string", "minLength": 1},
+    "updatedAt": {"type": "string", "minLength": 1},
+    "files": {"type": "array", "minItems": 4, "items": {"type": "string", "minLength": 1}}
+  }
+}

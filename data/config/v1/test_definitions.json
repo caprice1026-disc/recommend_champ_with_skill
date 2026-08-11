@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0.0",
+  "quick": {
+    "reaction": {"practiceTrials": 3, "mainTrials": 8},
+    "clickAccuracy": {"practiceTrials": 3, "mainTrials": 12},
+    "inputControl": {"practiceSequences": 2, "mainSequences": 6},
+    "prediction": {"practiceTrials": 2, "mainTrials": 8},
+    "attentionDistribution": {"practiceSeconds": 10, "mainSeconds": 35},
+    "taskSwitching": {"practiceTrials": 8, "mainTrials": 24},
+    "decision": {"mainQuestions": 8, "maxSecondsPerQuestion": 4},
+    "mentalStability": {"practiceSeconds": 3, "normalSeconds": 15, "stressSeconds": 20, "recoverySeconds": 15}
+  },
+  "detailedAdditions": {
+    "reaction": 12,
+    "clickAccuracy": 18,
+    "inputControl": 9,
+    "prediction": 12,
+    "attentionDistribution": 60,
+    "taskSwitching": 36,
+    "decision": 12,
+    "mentalStability": {"recoverySeconds": 10}
+  }
+}

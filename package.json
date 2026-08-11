@@ -1,0 +1,40 @@
+{
+  "name": "lol-skill-lab",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "test": "vitest --config vitest.config.mjs --pool=threads --no-file-parallelism",
+    "test:run": "vitest run --config vitest.config.mjs --pool=threads --no-file-parallelism",
+    "lint": "tsc --noEmit",
+    "config:validate": "tsx scripts/validate-config.ts",
+    "catalog:generate": "tsx scripts/generate-champion-catalog.ts",
+    "catalog:check": "tsx scripts/generate-champion-catalog.ts --check",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "types": "wrangler types"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "@cloudflare/vite-plugin": "latest",
+    "html-to-image": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "@cloudflare/workers-types": "latest",
+    "@types/node": "latest",
+    "@types/react-dom": "latest",
+    "ajv": "latest",
+    "jsdom": "latest",
+    "tsx": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "vitest": "latest",
+    "wrangler": "latest"
+  }
+}

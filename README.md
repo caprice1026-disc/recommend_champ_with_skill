@@ -4,55 +4,80 @@ League of Legendsのプレイ適性を、ブラウザ上の実測テストとプ
 
 ## 構成
 
-- `frontend`: React + TypeScript + Vite。測定中のPointerEvent、KeyboardEvent、`performance.now()`、`requestAnimationFrame`はブラウザ内で処理します。
-- `backend`: FastAPI。設定配信、匿名の集計結果保存、フィードバック受信を担当します。
-- `backend/data/config/v1`: バージョン付きJSON設定とJSON Schema。
+- React + TypeScript + Vite：診断の進行、入力イベント、特徴量、能力値、信頼度、推薦、称号をブラウザ内で処理します。
+- Cloudflare Workers：同意済み結果の保存・削除、フィードバック、Riot APIの安全な中継を担当します。
+- Cloudflare D1：診断結果、フィードバック、Riotの最小キャッシュを保存します。
+- Workers Static Assets：Viteで生成したSPAをWorkerと同一オリジンで配信します。
+- `data/config/v1`：チャンピオン、レーン、テスト、推薦、manifestの唯一の設定正本です。D1へは移しません。
 
-クイック診断と詳細判定は別モードで動き、詳細判定では本番試行数・継続時間・回復計測を増やします。再テストは指定した1カテゴリだけを最新有効値で置き換えます。
+生のクリック座標、キー入力列、フレーム軌道、個別試行ログはWorkerやD1へ送信しません。保存に同意した場合も、能力ベクトル、サブスコア、信頼度、推薦、称号、設定バージョンなどの集約値だけを保存します。
 
-## Windows / PowerShellで起動
+## 必要環境
 
-バックエンドをターミナル1で起動します。
+- Node.js 22以上
+- npm
+- Cloudflareへdeployする場合はWranglerのログイン済みアカウント、D1 database ID、必要に応じてRiot API key
 
-```powershell
-.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload --port 8080
-```
+## ローカル起動
 
-フロントエンドをターミナル2で起動します。
+依存関係をインストールします。
 
-```powershell
-Set-Location frontend
-npm.cmd install
-npm.cmd run dev
-```
+    npm.cmd install
 
-ブラウザで `http://localhost:5173` を開いてください。開発サーバー未起動時も、フロントエンドは内蔵の候補データへフォールバックします。
+ローカルD1へ初期マイグレーションを適用します。
 
-## Dockerで起動
+    npm.cmd run db:migrate:local
 
-Dockerではフロントエンドをビルドした静的ファイルをFastAPIが配信します。バックエンドの既定ポートは8080です。
+Cloudflare Vite開発サーバーを起動します。
 
-```powershell
-docker compose up --build
-```
+    npm.cmd run dev
 
-ブラウザで `http://localhost:8080` を開いてください。匿名の診断結果とフィードバックは `skill-lab-data` ボリュームへ保存されます。停止する場合は `docker compose down` を実行します。
+ブラウザで`http://localhost:5173/`を開いてください。`/api/*`はWorker、SPAの画面はStatic Assetsとして扱われます。設定はAPIから取得せず、`data/config/v1`からbuildへ取り込まれます。
+
+## Riot API（任意）
+
+`.dev.vars.example`を`.dev.vars`へコピーし、Riot APIキーを設定してください。.dev.varsはgitignore対象で、APIキーをGit、クライアントbundle、source map、D1、ログへ置かないでください。
+
+    Copy-Item .dev.vars.example .dev.vars
+
+Riot ID確認は診断結果保存とは別の同意を要求します。初期実装はACCOUNT-V1によるRiot ID確認と最小限の補助情報に限定し、Riot情報でabilityVectorを補正しません。
+
+## 設定検証とカタログ
+
+設定JSONとSchemaを検証します。
+
+    npm.cmd run config:validate
+
+チャンピオンカタログを生成・同期確認します。
+
+    npm.cmd run catalog:generate
+    npm.cmd run catalog:check
+
+未知の能力軸、設定キー、重複したchampion/lane、iconUrl・wikiUrl・difficultyNoteの欠落、生成カタログとの不整合はCIでも拒否します。
 
 ## 検証
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
-Set-Location frontend
-npm.cmd run test:run
-npm.cmd run lint
-npm.cmd run build
-Set-Location ..
-```
+    npm.cmd run lint
+    npm.cmd run test:run
+    npm.cmd run build
 
-この環境ではViteのビルド設定ローダーを `native` にしています。Windowsサンドボックスで設定バンドル時に発生する子プロセス起動制限を避けるためです。
+ブラウザでは、環境確認、プロフィール、好みの回答または全スキップ、同意、校正、全テスト、結果、詳細診断・再テスト、任意保存、deleteTokenを使った削除、フィードバックを確認します。
 
-## データとプライバシー
+保存APIは`consentToSave: true`を必須とし、保存成功時に`resultId`と一度だけ使う`deleteToken`を返します。deleteTokenはハッシュだけがD1に保存されます。
 
-生のクリック座標、キー入力列、試行単位ログはAPIへ送信しません。保存に同意した場合のみ、能力ベクトル、サブスコア、信頼度、推薦結果などの集計値をローカルSQLiteへ保存します。Riot API、アカウント、クラウド同期、LLMによる文章生成は初期版の対象外です。
+## Cloudflare deploy
+
+`wrangler.jsonc`のD1 `database_id`を、作成済みのD1 database IDへ置き換えてください。ゼロUUIDのplaceholderのままでは本番D1へ接続できません。
+
+    npx wrangler login
+    npx wrangler d1 create lol-skill-lab
+    npx wrangler d1 migrations apply DB --remote
+    npm.cmd run deploy
+
+Cloudflareの料金、無料枠、D1容量、WorkerとRiot APIのレート制限は現在の公式資料を確認してから運用してください。Previewでhealth、SPA直接URL、診断、保存・削除、フィードバック、Riot確認を検証してから本番へ反映します。
+
+## 旧構成について
+
+Cloudflare移行が完了した後は、FastAPI、Python設定ローダー、SQLite保存、旧Docker構成は使用しません。診断・推薦ロジックは移行前後で同一入力の結果が変わらないことを回帰テストで確認します。
 
 本アプリは非公式の参考診断であり、勝敗・実力・心理状態・医学的状態を保証または診断するものではありません。プレッシャー演出を含むテストはいつでも中断できます。

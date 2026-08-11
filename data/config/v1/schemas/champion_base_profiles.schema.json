@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "profiles"],
+  "properties": {
+    "schemaVersion": {"type": "string", "minLength": 1},
+    "profiles": {"type": "array", "minItems": 9, "items": {"$ref": "#/$defs/profile"}}
+  },
+  "$defs": {
+    "abilityScoreMap": {
+      "type": "object", "additionalProperties": false,
+      "required": ["reaction", "clickAccuracy", "inputControl", "prediction", "attentionDistribution", "taskSwitching", "decisionSpeed", "decisionQuality", "pressureStability", "recovery"],
+      "properties": {
+        "reaction": {"type": "number", "minimum": 0, "maximum": 1}, "clickAccuracy": {"type": "number", "minimum": 0, "maximum": 1},
+        "inputControl": {"type": "number", "minimum": 0, "maximum": 1}, "prediction": {"type": "number", "minimum": 0, "maximum": 1},
+        "attentionDistribution": {"type": "number", "minimum": 0, "maximum": 1}, "taskSwitching": {"type": "number", "minimum": 0, "maximum": 1},
+        "decisionSpeed": {"type": "number", "minimum": 0, "maximum": 1}, "decisionQuality": {"type": "number", "minimum": 0, "maximum": 1},
+        "pressureStability": {"type": "number", "minimum": 0, "maximum": 1}, "recovery": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "strings": {"type": "array", "items": {"type": "string"}},
+    "profile": {
+      "type": "object", "additionalProperties": false,
+      "required": ["championId", "championName", "styleProfile", "strengthTags", "riskTags", "trainingTags"],
+      "properties": {
+        "championId": {"type": "string", "minLength": 1}, "championName": {"type": "string", "minLength": 1},
+        "styleProfile": {"$ref": "#/$defs/abilityScoreMap"}, "strengthTags": {"$ref": "#/$defs/strings"}, "riskTags": {"$ref": "#/$defs/strings"}, "trainingTags": {"$ref": "#/$defs/strings"}
+      }
+    }
+  }
+}

@@ -215,3 +215,15 @@ frontend/*.tsbuildinfo
 backend/data/*.sqlite3
 backend/data/*.sqlite3-journal
 lol_skill_lab_cloudflare_architecture_design.docx
+
+# LoLスキルラボ Cloudflare/Vite root build and local state
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+*.local
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+scripts/*.js
+scripts/*.d.ts
