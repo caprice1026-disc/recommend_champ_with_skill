@@ -65,6 +65,17 @@ describe('diagnostic result engine', () => {
     expect(features.clickSmallTargetScore).toBe(0.1);
     expect(features.inputControl.mouseSequenceControl).toBe(0.1);
     expect(features.inputControl.keyboardSequenceControl).toBe(0.9);
+
+    const result = calculateDiagnosticResult(measured, DEFAULT_PREFERENCES, DEFAULT_CHAMPION_LANES);
+    expect(result.subscores.clickAccuracy).toEqual({
+      hitRate: 0.9,
+      centerAccuracy: 0.2,
+      smallTargetAccuracy: 0.1,
+      longDistanceAccuracy: 0.8,
+      movingTargetAccuracy: 0.7,
+      continuousAccuracy: 0.6,
+    });
+    expect(result.subscores.inputControl).toEqual(features.inputControl);
   });
 
   it('computes confidence per measured test instead of copying one global quality', () => {

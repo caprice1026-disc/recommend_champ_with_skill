@@ -21,6 +21,7 @@
 - [ ] Cloudflare移行後の同等性を確認してから旧FastAPI/Docker/Pythonを削除する。
 - [x] (2026-08-12) README、CI、ExecPlanを更新した。最終監査で新規Issue #29〜#37を登録し、修正・検証後にクローズする。
 - [x] (2026-08-12) 監査修正をコミット`d7d3a69`、追加監査修正を`4bf6198`として`main`へpushした。GitHub Issue #29〜#38へ修正内容をコメントし、すべてクローズした。現在のOpen Issueは0件である。
+- [x] (2026-08-12) 最終コード監査でIssue #39を登録し、クリック精度の実測サブスコア欠落をTDDで修正・検証した。Issue #39は修正コメント後にクローズする。
 - [ ] Cloudflare本番Previewを認証済みアカウントと実在D1 IDで検証し、検証後に旧構成を削除する。
 
 ## Surprises & Discoveries
@@ -56,7 +57,7 @@
 
 ## Outcomes & Retrospective
 
-ローカル移行と最終コード監査の修正は完了した。`npm run lint`、`npm run config:validate`、`npm run catalog:check`、62件のVitest、`npm run build`、D1 local migration、Cloudflare Viteランタイムのhealth／SPA／保存／削除／feedback smoke testを通過した。監査ではDockerfileの旧frontend参照、feedback HTTPエラーの成功表示、判断時間の二重計上、Riotネットワーク例外、セッション同意の残留、Riot同意チェックボックスのキーボード操作不能、Workerの正規化値範囲不足、READMEのテスト件数・Secret手順不足をIssue #29〜#37として登録し、修正した。追加監査では集約フィールド内部へ生入力を混入できる問題をIssue #38として登録し、許可リスト・深さ・キー検証で修正した。ブラウザでは環境確認、全スキップ、同意、ポインター校正、QWER校正、概要、全8テスト、結果表示、保存・削除・feedback、再読み込み、SPA直接URL、モバイル幅を確認し、診断コアの移行前後同等性は固定入力の回帰テストで保持した。
+ローカル移行と最終コード監査の修正は完了した。`npm run lint`、`npm run config:validate`、`npm run catalog:check`、62件のVitest、`npm run build`、D1 local migration、Cloudflare Viteランタイムのhealth／SPA／保存／削除／feedback smoke testを通過した。監査ではDockerfileの旧frontend参照、feedback HTTPエラーの成功表示、判断時間の二重計上、Riotネットワーク例外、セッション同意の残留、Riot同意チェックボックスのキーボード操作不能、Workerの正規化値範囲不足、READMEのテスト件数・Secret手順不足をIssue #29〜#37として登録し、修正した。追加監査では集約フィールド内部へ生入力を混入できる問題をIssue #38として登録し、許可リスト・深さ・キー検証で修正した。Issue #39ではクリック精度テストの実測メトリクスが最終`subscores`へ引き継がれない問題を検出し、`clickAccuracy`をFeatureVectorへ戻す修正と回帰テストを追加した。ブラウザでは環境確認、全スキップ、同意、ポインター校正、QWER校正、概要、全8テスト、結果表示、保存・削除・feedback、再読み込み、SPA直接URL、モバイル幅を確認し、診断コアの移行前後同等性は固定入力の回帰テストで保持した。
 
 監査修正後のホスト上のWorkers相当smokeは、health／SPAが200、診断保存が201、削除が204、feedbackが201となった。生成済みWrangler設定とローカルD1の永続化先が一致するよう、built migrationとDocker起動コマンドへ`--persist-to`を明示した。Docker Desktop Linux Engineが起動していないため、実Dockerイメージbuild自体は未検証である。
 
@@ -66,9 +67,9 @@
 
 ## Context and Orientation
 
-現行フロントエンドは`frontend/src/App.tsx`が画面遷移、保存、削除、フィードバックを担当し、`frontend/src/features/tests/TestStage.tsx`が実際のブラウザ入力テストを担当する。`frontend/src/domain`には診断・推薦の計算コアがある。`frontend/src/data`にはfallback設定と生成済みチャンピオンカタログがある。
+現行フロントエンドは`src/client/App.tsx`が画面遷移、保存、削除、フィードバックを担当し、`src/client/features/tests/TestStage.tsx`が実際のブラウザ入力テストを担当する。`src/domain`には診断・推薦の計算コアがある。`src/client/data`には静的設定と生成済みチャンピオンカタログがある。
 
-現行バックエンドは`backend/app/main.py`のFastAPIルート、`backend/app/storage.py`のSQLite保存、`backend/app/config_loader.py`のJSON Schema検証からなる。JSON設定は`backend/data/config/v1`にあり、champion、lane、test、recommendation、manifestと各schemaを含む。
+移行前の旧バックエンドは`backend/app/main.py`のFastAPIルート、`backend/app/storage.py`のSQLite保存、`backend/app/config_loader.py`のJSON Schema検証からなる。旧JSON設定は`backend/data/config/v1`に残っているが、現行の正本は`data/config/v1`である。
 
 移行後のWorkerは`src/worker/index.ts`を入口とし、HTTPルートの判定を`src/worker/routes`、保存・Riot処理を`src/worker/services`、D1 prepared statementを`src/worker/repositories`、環境・入力型を`src/worker/types.ts`へ分ける。UIは`src/client`、診断・推薦コアは`src/domain`へ整理する。静的設定はリポジトリルートの`data/config/v1`が正本となる。
 

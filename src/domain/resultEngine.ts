@@ -39,6 +39,7 @@ export function featuresFromTestResults(results: TestResult[]): FeatureVector {
     clickHitRateScore: clickMetrics?.hitRate ?? click,
     clickCenterAccuracyScore: clickMetrics?.centerAccuracy ?? click,
     clickSmallTargetScore: clickMetrics?.smallTargetAccuracy ?? click,
+    clickAccuracy: clickMetrics,
     inputControl: inputMetrics ?? {
       mouseSequenceControl: input,
       keyboardSequenceControl: input,
