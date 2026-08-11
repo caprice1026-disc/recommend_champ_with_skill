@@ -20,7 +20,8 @@
 - [x] (2026-08-12) ローカルCloudflare Vite開発、build、設定検証、Vitest、ブラウザの診断導線を検証する。
 - [ ] Cloudflare移行後の同等性を確認してから旧FastAPI/Docker/Pythonを削除する。
 - [x] (2026-08-12) README、CI、ExecPlanを更新した。GitHubの未解決Issueは0件で、追加登録が必要な重複Issueはなかった。
-- [ ] Cloudflare本番Previewを認証済みアカウントと実在D1 IDで検証し、検証後にmainへpushする。
+- [x] (2026-08-12) ローカル移行コミット`7cd0414`を`main`へpushした。
+- [ ] Cloudflare本番Previewを認証済みアカウントと実在D1 IDで検証し、検証後に旧構成を削除する。
 
 ## Surprises & Discoveries
 
@@ -58,6 +59,8 @@
 ローカル移行は完了した。`npm run lint`、`npm run config:validate`、`npm run catalog:check`、43件のVitest、`npm run build`、D1 local migration、Cloudflare Viteランタイムのhealth／SPA／保存／削除smoke testを通過した。ブラウザでは環境確認、全スキップ、同意、ポインター校正、QWER校正、概要、診断ステージ開始を確認し、診断コアの移行前後同等性は固定入力の回帰テストで保持した。
 
 `wrangler whoami`は未認証だったため、本番Cloudflare Preview、実在D1へのremote migration、Riot API上流接続は未検証である。D1 IDやRiot APIキーを捏造せず、旧FastAPI/Docker/Pythonはこの状態では削除しない。認証済み環境でPreviewを検証した後に旧構成を削除し、mainへpushすることが残作業である。
+
+ローカル移行コミット`7cd0414`は2026-08-12に`origin/main`へpush済みである。
 
 ## Context and Orientation
 
