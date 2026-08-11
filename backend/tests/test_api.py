@@ -11,6 +11,9 @@ def test_health_and_manifest_are_available() -> None:
     manifest = client.get('/api/config/manifest')
     assert manifest.status_code == 200
     assert manifest.json()['diagnosisVersion'] == '1.0.0'
+    tests = client.get('/api/config/tests')
+    assert tests.status_code == 200
+    assert tests.json()['quick']['attentionDistribution']['mainSeconds'] == 35
 
 
 def test_profiles_are_versioned_and_have_lane_context() -> None:

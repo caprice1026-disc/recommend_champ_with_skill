@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .config_loader import load_champion_lanes, load_champions, load_manifest
+from .config_loader import load_champion_lanes, load_champions, load_config, load_manifest
 from .schemas import DiagnosisSaveRequest, FeedbackRequest
 from .storage import delete_diagnosis, save_diagnosis, save_feedback
 
@@ -29,6 +29,11 @@ def health() -> dict[str, str]:
 @app.get('/api/config/manifest')
 def manifest() -> dict:
     return load_manifest()
+
+
+@app.get('/api/config/tests')
+def tests() -> dict:
+    return load_config('test_definitions.json')
 
 
 @app.get('/api/profiles/champions')

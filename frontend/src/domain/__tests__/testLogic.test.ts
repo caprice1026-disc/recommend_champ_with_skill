@@ -9,6 +9,8 @@ import {
   predictionTrailPoints,
   ruleForTaskSwitch,
   scoreDecisionAnswers,
+  createDiagnosticTestQueue,
+  trackingRetention,
 } from '../testLogic';
 
 describe('diagnostic interaction logic', () => {
@@ -94,5 +96,30 @@ describe('diagnostic interaction logic', () => {
     const logic = await import('../testLogic');
     expect(logic.countValidTrials).toBeTypeOf('function');
     expect(logic.countValidTrials([0.1, 0.2, 0.4, 0.9], 0.35)).toBe(2);
+  });
+
+  it('keeps diagnostic blocks fixed while shuffling each block reproducibly', () => {
+    const first = createDiagnosticTestQueue(1234);
+    const same = createDiagnosticTestQueue(1234);
+    const other = createDiagnosticTestQueue(5678);
+    expect(first).toEqual(same);
+    expect(first.slice(-2)).toEqual(['decision', 'mentalStability']);
+    expect(first.slice(0, 3).sort()).toEqual(['reaction', 'clickAccuracy', 'inputControl'].sort());
+    expect(first.slice(3, 6).sort()).toEqual(['prediction', 'attentionDistribution', 'taskSwitching'].sort());
+    expect(other).not.toEqual(first);
+  });
+
+  it('scores attention tracking by elapsed sample time rather than pointer event count', () => {
+    expect(trackingRetention([
+      { atMs: 0, distance: 4 }, { atMs: 100, distance: 5 }, { atMs: 200, distance: 30 }, { atMs: 400, distance: 30 },
+    ], 16)).toBeCloseTo(0.5);
+    expect(trackingRetention([{ atMs: 0, distance: 4 }, { atMs: 1000, distance: 4 }], 16)).toBe(1);
+  });
+
+  it('creates a unique decision scenario order before repeating scenarios', async () => {
+    const logic = await import('../testLogic');
+    const order = logic.buildDecisionScenarioOrder(12, () => 0.1);
+    expect(new Set(order.slice(0, 6)).size).toBe(6);
+    expect(new Set(order.slice(6)).size).toBe(6);
   });
 });

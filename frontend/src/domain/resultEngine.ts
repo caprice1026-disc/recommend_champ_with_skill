@@ -13,6 +13,11 @@ const qualityFor = (results: TestResult[], id: TestResult['testId']): number => 
   return result ? effectiveQuality(result) : 0.4;
 };
 
+const metricFor = <T,>(results: TestResult[], id: TestResult['testId'], read: (result: TestResult) => T | undefined, fallback: T): T => {
+  const result = results.find((item) => item.testId === id);
+  return result ? (read(result) ?? fallback) : fallback;
+};
+
 export function featuresFromTestResults(results: TestResult[]): FeatureVector {
   const reaction = scoreFor(results, 'reaction');
   const click = scoreFor(results, 'clickAccuracy');
@@ -22,61 +27,99 @@ export function featuresFromTestResults(results: TestResult[]): FeatureVector {
   const switching = scoreFor(results, 'taskSwitching');
   const decision = scoreFor(results, 'decision');
   const mental = scoreFor(results, 'mentalStability');
+  const clickMetrics = metricFor(results, 'clickAccuracy', (result) => result.metrics?.click, undefined);
+  const inputMetrics = metricFor(results, 'inputControl', (result) => result.metrics?.input, undefined);
+  const attentionMetrics = metricFor(results, 'attentionDistribution', (result) => result.metrics?.attention, undefined);
+  const decisionMetrics = metricFor(results, 'decision', (result) => result.metrics?.decision, undefined);
+  const mentalMetrics = metricFor(results, 'mentalStability', (result) => result.metrics?.mental, undefined);
   return {
     reactionMedianScore: reaction,
-    reactionStabilityScore: clampScore(0.55 * reaction + 0.45 * meanQuality(results, 'reaction')),
-    falseStartSuppression: clampScore(0.7 * reaction + 0.3 * meanQuality(results, 'reaction')),
-    clickHitRateScore: click,
-    clickCenterAccuracyScore: clampScore(0.65 * click + 0.35 * meanQuality(results, 'clickAccuracy')),
-    clickSmallTargetScore: clampScore(0.55 * click + 0.45 * meanQuality(results, 'clickAccuracy')),
-    inputControl: {
+    reactionStabilityScore: metricFor(results, 'reaction', (result) => result.metrics?.reaction ? clampScore(1 - (result.metrics.reaction.responseTimesMs.length > 1 ? standardDeviation(result.metrics.reaction.responseTimesMs) / 500 : 0)) : undefined, meanQuality(results, 'reaction')),
+    falseStartSuppression: metricFor(results, 'reaction', (result) => result.metrics?.reaction ? clampScore(1 - result.metrics.reaction.falseStarts / Math.max(1, result.totalTrials)) : undefined, reaction),
+    clickHitRateScore: clickMetrics?.hitRate ?? click,
+    clickCenterAccuracyScore: clickMetrics?.centerAccuracy ?? click,
+    clickSmallTargetScore: clickMetrics?.smallTargetAccuracy ?? click,
+    inputControl: inputMetrics ?? {
       mouseSequenceControl: input,
-      keyboardSequenceControl: clampScore(input * 0.95),
-      mouseKeyboardCoordination: clampScore(input * 0.9),
-      rhythmStability: clampScore(input * 0.85),
-      misinputSuppression: clampScore(input * 0.8 + 0.2 * meanQuality(results, 'inputControl')),
+      keyboardSequenceControl: input,
+      mouseKeyboardCoordination: input,
+      rhythmStability: input,
+      misinputSuppression: input,
     },
     predictionPositionAccuracy: prediction,
-    predictionVelocityAdaptation: clampScore(prediction * 0.9),
-    predictionPatternLearning: clampScore(prediction * 0.85 + 0.15 * meanQuality(results, 'prediction')),
-    attentionPeripheralDetection: attention,
-    attentionCentralRetention: clampScore(attention * 0.9),
-    attentionPeripheralReaction: clampScore(attention * 0.85),
+    predictionVelocityAdaptation: prediction,
+    predictionPatternLearning: prediction,
+    attentionPeripheralDetection: attentionMetrics ? clampScore(attentionMetrics.peripheralHits / Math.max(1, attentionMetrics.peripheralEvents)) : attention,
+    attentionCentralRetention: attentionMetrics?.trackingRetention ?? attention,
+    attentionPeripheralReaction: attentionMetrics ? clampScore(attentionMetrics.peripheralHits / Math.max(1, attentionMetrics.peripheralEvents)) : attention,
     switchingPostAccuracy: switching,
-    switchingCostScore: clampScore(switching * 0.9),
-    switchingRuleRetention: clampScore(switching * 0.85),
-    decisionCorrectness: decision,
-    decisionInformationUtilization: clampScore(decision * 0.9),
-    decisionConsistency: clampScore(decision * 0.85 + 0.15 * meanQuality(results, 'decision')),
-    correctDecisionSpeed: clampScore(0.55 * decision + 0.45 * meanQuality(results, 'decision')),
-    pressureDegradation: clampScore(1 - mental),
-    recoveryTrialCountScore: mental,
-    recoverySlopeScore: clampScore(mental * 0.9),
-    failureChainSuppression: clampScore(mental * 0.85),
+    switchingCostScore: switching,
+    switchingRuleRetention: switching,
+    decisionCorrectness: decisionMetrics ? mean(decisionMetrics.correctAnswers.map((correct) => correct ? 1 : 0)) : decision,
+    decisionInformationUtilization: decision,
+    decisionConsistency: decisionMetrics ? consistencyScore(decisionMetrics.correctAnswers) : decision,
+    correctDecisionSpeed: decisionMetrics?.speedScore ?? decision,
+    pressureDegradation: mentalMetrics?.pressureDegradation ?? clampScore(1 - mental),
+    recoveryTrialCountScore: mentalMetrics?.recoveryTrialCountScore ?? mental,
+    recoverySlopeScore: mentalMetrics?.recoverySlopeScore ?? mental,
+    failureChainSuppression: mentalMetrics?.failureChainSuppression ?? mental,
   };
 }
 
 function clampScore(value: number): number { return Math.min(1, Math.max(0, value)); }
 function meanQuality(results: TestResult[], id: TestResult['testId']): number { return qualityFor(results, id); }
+function mean(values: number[]): number { return values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length; }
+function standardDeviation(values: number[]): number {
+  if (values.length < 2) return 0;
+  const average = mean(values);
+  return Math.sqrt(mean(values.map((value) => (value - average) ** 2)));
+}
+function consistencyScore(values: boolean[]): number {
+  if (values.length < 2) return values.length === 1 ? 1 : 0;
+  const ratio = mean(values.map((value) => value ? 1 : 0));
+  return clampScore(1 - 4 * ratio * (1 - ratio));
+}
+
+const ABILITY_TESTS: Record<string, TestResult['testId'][]> = {
+  reaction: ['reaction'], clickAccuracy: ['clickAccuracy'], inputControl: ['inputControl'], prediction: ['prediction'],
+  attentionDistribution: ['attentionDistribution'], taskSwitching: ['taskSwitching'], decisionSpeed: ['decision'],
+  decisionQuality: ['decision'], pressureStability: ['mentalStability'], recovery: ['mentalStability'],
+};
+
+function confidenceForAbility(results: TestResult[], ability: string): number {
+  const relevant = results.filter((result) => ABILITY_TESTS[ability]?.includes(result.testId));
+  if (relevant.length === 0) return 0.35;
+  const inputs = relevant.map((result) => {
+    const validRatio = result.totalTrials > 0 ? clampScore(result.validTrials / result.totalTrials) : 0;
+    return {
+      validSampleScore: validRatio,
+      dispersionScore: result.metrics?.dispersionScore ?? Math.min(result.quality, validRatio),
+      frameStabilityScore: result.metrics?.frameStabilityScore ?? 0.95,
+      inputStabilityScore: result.metrics?.inputStabilityScore ?? result.quality,
+      completionScore: result.completed ? 1 : 0,
+    };
+  });
+  const average = (key: keyof typeof inputs[number]) => mean(inputs.map((input) => input[key]));
+  return calculateConfidence({
+    validSampleScore: average('validSampleScore'),
+    dispersionScore: average('dispersionScore'),
+    frameStabilityScore: average('frameStabilityScore'),
+    inputStabilityScore: average('inputStabilityScore'),
+    completionScore: average('completionScore'),
+  }).value;
+}
 
 export function calculateDiagnosticResult(
   results: TestResult[],
   preferences: ScoreMap,
   candidates: ChampionLaneProfile[],
   mode: DiagnosticResult['mode'] = 'quick',
+  experience: { beginner: boolean } = { beginner: false },
 ): DiagnosticResult {
   const abilityResult = calculateAbilityScores(featuresFromTestResults(results));
   const confidence: Partial<Record<keyof typeof abilityResult.abilities, number>> = {};
-  const quality = results.length === 0 ? 0.35 : results.reduce((sum, result) => sum + effectiveQuality(result), 0) / results.length;
   for (const key of Object.keys(abilityResult.abilities)) {
-    const confidenceResult = calculateConfidence({
-      validSampleScore: quality,
-      dispersionScore: quality,
-      frameStabilityScore: 0.95,
-      inputStabilityScore: quality,
-      completionScore: results.length >= 8 ? 1 : 0.65,
-    });
-    confidence[key as keyof typeof confidence] = confidenceResult.value;
+    confidence[key as keyof typeof confidence] = confidenceForAbility(results, key);
   }
   const result: DiagnosticResult = {
     ...abilityResult,
@@ -89,8 +132,8 @@ export function calculateDiagnosticResult(
     abilities: result.abilities,
     confidence,
     preferences,
-    experience: { beginner: false },
     candidates,
+    experience,
   });
   return result;
 }

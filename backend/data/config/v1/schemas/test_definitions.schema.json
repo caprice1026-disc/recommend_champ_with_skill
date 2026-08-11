@@ -5,7 +5,39 @@
   "required": ["schemaVersion", "quick", "detailedAdditions"],
   "properties": {
     "schemaVersion": {"type": "string", "minLength": 1},
-    "quick": {"type": "object", "minProperties": 8, "additionalProperties": {"type": "object"}},
-    "detailedAdditions": {"type": "object", "minProperties": 8, "additionalProperties": {"type": ["string", "number"]}}
+    "quick": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reaction", "clickAccuracy", "inputControl", "prediction", "attentionDistribution", "taskSwitching", "decision", "mentalStability"],
+      "properties": {
+        "reaction": {"$ref": "#/$defs/trials"},
+        "clickAccuracy": {"$ref": "#/$defs/trials"},
+        "inputControl": {"type": "object", "additionalProperties": false, "required": ["practiceSequences", "mainSequences"], "properties": {"practiceSequences": {"type": "integer", "minimum": 1}, "mainSequences": {"type": "integer", "minimum": 1}}},
+        "prediction": {"$ref": "#/$defs/trials"},
+        "attentionDistribution": {"$ref": "#/$defs/seconds"},
+        "taskSwitching": {"$ref": "#/$defs/trials"},
+        "decision": {"type": "object", "additionalProperties": false, "required": ["mainQuestions", "maxSecondsPerQuestion"], "properties": {"mainQuestions": {"type": "integer", "minimum": 1}, "maxSecondsPerQuestion": {"type": "number", "exclusiveMinimum": 0}}},
+        "mentalStability": {"type": "object", "additionalProperties": false, "required": ["practiceSeconds", "normalSeconds", "stressSeconds", "recoverySeconds"], "properties": {"practiceSeconds": {"type": "number", "exclusiveMinimum": 0}, "normalSeconds": {"type": "number", "exclusiveMinimum": 0}, "stressSeconds": {"type": "number", "exclusiveMinimum": 0}, "recoverySeconds": {"type": "number", "exclusiveMinimum": 0}}}
+      }
+    },
+    "detailedAdditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reaction", "clickAccuracy", "inputControl", "prediction", "attentionDistribution", "taskSwitching", "decision", "mentalStability"],
+      "properties": {
+        "reaction": {"type": "integer", "minimum": 1},
+        "clickAccuracy": {"type": "integer", "minimum": 1},
+        "inputControl": {"type": "integer", "minimum": 1},
+        "prediction": {"type": "integer", "minimum": 1},
+        "attentionDistribution": {"type": "number", "exclusiveMinimum": 0},
+        "taskSwitching": {"type": "integer", "minimum": 1},
+        "decision": {"type": "integer", "minimum": 1},
+        "mentalStability": {"type": "object", "additionalProperties": false, "required": ["recoverySeconds"], "properties": {"recoverySeconds": {"type": "number", "exclusiveMinimum": 0}}}
+      }
+    }
+  },
+  "$defs": {
+    "trials": {"type": "object", "additionalProperties": false, "required": ["practiceTrials", "mainTrials"], "properties": {"practiceTrials": {"type": "integer", "minimum": 1}, "mainTrials": {"type": "integer", "minimum": 1}}},
+    "seconds": {"type": "object", "additionalProperties": false, "required": ["practiceSeconds", "mainSeconds"], "properties": {"practiceSeconds": {"type": "number", "exclusiveMinimum": 0}, "mainSeconds": {"type": "number", "exclusiveMinimum": 0}}}
   }
 }

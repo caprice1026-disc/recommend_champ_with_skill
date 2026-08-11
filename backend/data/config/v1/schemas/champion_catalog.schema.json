@@ -9,7 +9,31 @@
     "profiles": {"type": "array", "minItems": 12, "items": {"$ref": "#/$defs/profile"}}
   },
   "$defs": {
-    "scoreMap": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1}},
+    "abilityScoreMap": {
+      "type": "object", "additionalProperties": false,
+      "required": ["reaction", "clickAccuracy", "inputControl", "prediction", "attentionDistribution", "taskSwitching", "decisionSpeed", "decisionQuality", "pressureStability", "recovery"],
+      "properties": {
+        "reaction": {"type": "number", "minimum": 0, "maximum": 1}, "clickAccuracy": {"type": "number", "minimum": 0, "maximum": 1}, "inputControl": {"type": "number", "minimum": 0, "maximum": 1}, "prediction": {"type": "number", "minimum": 0, "maximum": 1}, "attentionDistribution": {"type": "number", "minimum": 0, "maximum": 1}, "taskSwitching": {"type": "number", "minimum": 0, "maximum": 1}, "decisionSpeed": {"type": "number", "minimum": 0, "maximum": 1}, "decisionQuality": {"type": "number", "minimum": 0, "maximum": 1}, "pressureStability": {"type": "number", "minimum": 0, "maximum": 1}, "recovery": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "partialAbilityScoreMap": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "reaction": {"type": "number", "minimum": 0, "maximum": 1}, "clickAccuracy": {"type": "number", "minimum": 0, "maximum": 1}, "inputControl": {"type": "number", "minimum": 0, "maximum": 1}, "prediction": {"type": "number", "minimum": 0, "maximum": 1}, "attentionDistribution": {"type": "number", "minimum": 0, "maximum": 1}, "taskSwitching": {"type": "number", "minimum": 0, "maximum": 1}, "decisionSpeed": {"type": "number", "minimum": 0, "maximum": 1}, "decisionQuality": {"type": "number", "minimum": 0, "maximum": 1}, "pressureStability": {"type": "number", "minimum": 0, "maximum": 1}, "recovery": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "preferenceScoreMap": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "aggression": {"type": "number", "minimum": 0, "maximum": 1}, "teamSupport": {"type": "number", "minimum": 0, "maximum": 1}, "independence": {"type": "number", "minimum": 0, "maximum": 1}, "teamCoordination": {"type": "number", "minimum": 0, "maximum": 1}, "earlyGameFocus": {"type": "number", "minimum": 0, "maximum": 1}, "lateGameFocus": {"type": "number", "minimum": 0, "maximum": 1}, "burstPreference": {"type": "number", "minimum": 0, "maximum": 1}, "sustainedCombat": {"type": "number", "minimum": 0, "maximum": 1}, "reactivePlay": {"type": "number", "minimum": 0, "maximum": 1}, "riskTaking": {"type": "number", "minimum": 0, "maximum": 1}, "complexityEnjoyment": {"type": "number", "minimum": 0, "maximum": 1}, "stabilityPreference": {"type": "number", "minimum": 0, "maximum": 1}, "highVariancePreference": {"type": "number", "minimum": 0, "maximum": 1}, "rangePreference": {"type": "number", "minimum": 0, "maximum": 1}, "meleePreference": {"type": "number", "minimum": 0, "maximum": 1}, "mapInfluencePreference": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "difficultyScoreMap": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "inputComplexity": {"type": "number", "minimum": 0, "maximum": 1}, "aimDifficulty": {"type": "number", "minimum": 0, "maximum": 1}, "decisionComplexity": {"type": "number", "minimum": 0, "maximum": 1}, "macroRequirement": {"type": "number", "minimum": 0, "maximum": 1}, "knowledgeRequirement": {"type": "number", "minimum": 0, "maximum": 1}, "situationalDependence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
     "strings": {"type": "array", "items": {"type": "string"}},
     "metadata": {
       "type": "object", "additionalProperties": false,
@@ -26,8 +50,8 @@
       "properties": {
         "championId": {"type": "string", "minLength": 1}, "championName": {"type": "string", "minLength": 1},
         "lane": {"enum": ["TOP", "JUNGLE", "MID", "BOT", "SUPPORT"]}, "profileMode": {"enum": ["derived", "explicit"]},
-        "styleProfile": {"$ref": "#/$defs/scoreMap"}, "minimumRequirements": {"$ref": "#/$defs/scoreMap"}, "requirementWeights": {"$ref": "#/$defs/scoreMap"},
-        "preferenceProfile": {"$ref": "#/$defs/scoreMap"}, "difficultyProfile": {"$ref": "#/$defs/scoreMap"},
+        "styleProfile": {"$ref": "#/$defs/abilityScoreMap"}, "minimumRequirements": {"$ref": "#/$defs/partialAbilityScoreMap"}, "requirementWeights": {"$ref": "#/$defs/partialAbilityScoreMap"},
+        "preferenceProfile": {"$ref": "#/$defs/preferenceScoreMap"}, "difficultyProfile": {"$ref": "#/$defs/difficultyScoreMap"},
         "strengthTags": {"$ref": "#/$defs/strings"}, "riskTags": {"$ref": "#/$defs/strings"}, "trainingTags": {"$ref": "#/$defs/strings"},
         "iconUrl": {"type": "string", "format": "uri-reference"}, "wikiUrl": {"type": "string", "format": "uri-reference"},
         "difficultyNote": {"type": "string", "minLength": 1}

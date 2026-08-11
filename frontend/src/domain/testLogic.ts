@@ -1,5 +1,7 @@
 export type Action = 'click' | 'rightClick' | 'q' | 'e';
 
+export type DiagnosticTestId = 'reaction' | 'clickAccuracy' | 'inputControl' | 'prediction' | 'attentionDistribution' | 'taskSwitching' | 'decision' | 'mentalStability';
+
 export const KEY_SEQUENCE = ['q', 'w', 'e', 'r'] as const;
 
 export interface PredictionPoint {
@@ -36,6 +38,53 @@ export function viewportStatus(width: number, height: number): ViewportStatus {
 
 export function countValidTrials(scores: readonly number[], threshold: number): number {
   return scores.filter((score) => score >= threshold).length;
+}
+
+export interface TrackingSample {
+  atMs: number;
+  distance: number;
+}
+
+export function trackingRetention(samples: readonly TrackingSample[], threshold: number): number {
+  if (samples.length < 2) return samples.length === 1 && samples[0].distance <= threshold ? 1 : 0;
+  const ordered = [...samples].sort((left, right) => left.atMs - right.atMs);
+  const total = ordered[ordered.length - 1].atMs - ordered[0].atMs;
+  if (total <= 0) return ordered[0].distance <= threshold ? 1 : 0;
+  const within = ordered.slice(0, -1).reduce((sum, sample, index) => {
+    const duration = Math.max(0, ordered[index + 1].atMs - sample.atMs);
+    return sum + (sample.distance <= threshold ? duration : 0);
+  }, 0);
+  return within / total;
+}
+
+function mulberry32(seed: number): () => number {
+  let value = seed >>> 0;
+  return () => {
+    value += 0x6D2B79F5;
+    let t = value;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffle<T>(items: readonly T[], random: () => number): T[] {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.min(0.999999, Math.max(0, random())) * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
+}
+
+export function createDiagnosticTestQueue(seed: number): DiagnosticTestId[] {
+  const random = mulberry32(seed);
+  return [
+    ...shuffle(['reaction', 'clickAccuracy', 'inputControl'] as const, random),
+    ...shuffle(['prediction', 'attentionDistribution', 'taskSwitching'] as const, random),
+    'decision',
+    'mentalStability',
+  ];
 }
 
 export function nextReactionDelay(randomValue: number, previous: number | null): number {
@@ -113,6 +162,13 @@ export function scoreDecisionAnswers(scenarios: readonly DecisionScenario[], ans
     },
     { answered: 0, correct: 0 },
   );
+}
+
+export function buildDecisionScenarioOrder(total: number, random: () => number = Math.random): number[] {
+  const base = Array.from({ length: DECISION_SCENARIOS.length }, (_, index) => index);
+  const order: number[] = [];
+  while (order.length < total) order.push(...shuffle(base, random));
+  return order.slice(0, total);
 }
 
 export const DECISION_SCENARIOS: DecisionScenario[] = [

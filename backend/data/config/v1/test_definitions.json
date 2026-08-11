@@ -8,16 +8,16 @@
     "attentionDistribution": {"practiceSeconds": 10, "mainSeconds": 35},
     "taskSwitching": {"practiceTrials": 8, "mainTrials": 24},
     "decision": {"mainQuestions": 8, "maxSecondsPerQuestion": 4},
-    "mentalStability": {"normalSeconds": 15, "stressSeconds": 20, "recoverySeconds": 15}
+    "mentalStability": {"practiceSeconds": 3, "normalSeconds": 15, "stressSeconds": 20, "recoverySeconds": 15}
   },
   "detailedAdditions": {
     "reaction": 12,
     "clickAccuracy": 18,
-    "inputControl": "target-linked-hold-release-rule-change-long-sequence",
+    "inputControl": 9,
     "prediction": 12,
     "attentionDistribution": 60,
     "taskSwitching": 36,
     "decision": 12,
-    "mentalStability": "additional-recovery"
+    "mentalStability": {"recoverySeconds": 10}
   }
 }

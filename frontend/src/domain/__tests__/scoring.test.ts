@@ -118,6 +118,45 @@ describe('calculateRecommendations', () => {
     expect(result.readyNow.alternatives).toHaveLength(0);
     expect(result.readyNow.primary?.lane).toBe('TOP');
   });
+
+  it('does not let unspecified requirement axes dilute shortfall', () => {
+    const input: RecommendationInput = {
+      abilities: { reaction: 0.2, clickAccuracy: 0.9 },
+      confidence: { reaction: 1, clickAccuracy: 1 },
+      preferences: {},
+      experience: { beginner: false },
+      candidates: [],
+    };
+    const sparse: ChampionLaneProfile = {
+      championId: 'sparse', championName: 'Sparse', lane: 'TOP',
+      styleProfile: { reaction: 0.8 }, minimumRequirements: { reaction: 0.8, clickAccuracy: 0 },
+      requirementWeights: { reaction: 1 }, preferenceProfile: {}, difficultyProfile: {},
+      strengthTags: [], riskTags: [], trainingTags: ['reaction'],
+    };
+    const complete: ChampionLaneProfile = {
+      ...sparse,
+      championId: 'complete',
+      styleProfile: { reaction: 0.8, clickAccuracy: 0.9 },
+      minimumRequirements: { reaction: 0.8, clickAccuracy: 0 },
+      requirementWeights: { reaction: 1, clickAccuracy: 0 },
+    };
+    const result = calculateRecommendations({ ...input, candidates: [sparse, complete] });
+    expect(result.growthCandidate.primary?.championId).toBe('complete');
+    expect(result.growthCandidate.primary?.shortfall).toBeCloseTo(0.36);
+  });
+
+  it('applies beginner tolerance only to recommendation eligibility, not ability values', () => {
+    const profile: ChampionLaneProfile = {
+      championId: 'hard', championName: 'Hard', lane: 'TOP',
+      styleProfile: { reaction: 0.8 }, minimumRequirements: { reaction: 0.24 },
+      requirementWeights: { reaction: 0.7 }, preferenceProfile: {}, difficultyProfile: {},
+      strengthTags: [], riskTags: ['practice'], trainingTags: ['reaction'],
+    };
+    const base = { abilities: { reaction: 0.2 }, confidence: { reaction: 0.9 }, preferences: {} };
+    const experienced = calculateRecommendations({ ...base, experience: { beginner: false }, candidates: [profile] });
+    const beginner = calculateRecommendations({ ...base, experience: { beginner: true }, candidates: [profile] });
+    expect(beginner.readyNow.primary?.shortfall).toBeLessThan(experienced.readyNow.primary?.shortfall ?? 1);
+  });
 });
 
 describe('mergeRetestResults', () => {

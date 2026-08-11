@@ -12,6 +12,65 @@ export type TestId =
 
 export type TestMode = 'quick' | 'detailed' | 'retest';
 
+export interface ReactionMetrics {
+  responseTimesMs: number[];
+  falseStarts: number;
+}
+
+export interface ClickMetrics {
+  hitRate: number;
+  centerAccuracy: number;
+  smallTargetAccuracy: number;
+  longDistanceAccuracy: number;
+  movingTargetAccuracy: number;
+  continuousAccuracy: number;
+}
+
+export interface InputMetrics {
+  mouseSequenceControl: number;
+  keyboardSequenceControl: number;
+  mouseKeyboardCoordination: number;
+  rhythmStability: number;
+  misinputSuppression: number;
+}
+
+export interface AttentionMetrics {
+  peripheralEvents: number;
+  peripheralHits: number;
+  trackingRetention: number;
+  trackingMeanDistance: number;
+}
+
+export interface DecisionMetrics {
+  responseTimesMs: number[];
+  correctAnswers: boolean[];
+  answerChanges: number;
+  timeouts: number;
+  speedScore: number;
+}
+
+export interface MentalMetrics {
+  normalScores: number[];
+  pressureScores: number[];
+  recoveryScores: number[];
+  pressureDegradation: number;
+  recoveryTrialCountScore: number;
+  recoverySlopeScore: number;
+  failureChainSuppression: number;
+}
+
+export interface TestMetrics {
+  reaction?: ReactionMetrics;
+  click?: ClickMetrics;
+  input?: InputMetrics;
+  attention?: AttentionMetrics;
+  decision?: DecisionMetrics;
+  mental?: MentalMetrics;
+  dispersionScore?: number;
+  frameStabilityScore?: number;
+  inputStabilityScore?: number;
+}
+
 export interface TestResult {
   testId: TestId;
   score: number;
@@ -21,6 +80,7 @@ export interface TestResult {
   totalTrials: number;
   completed: boolean;
   rawTrialCount: number;
+  metrics?: TestMetrics;
 }
 
 export interface TestDefinition {

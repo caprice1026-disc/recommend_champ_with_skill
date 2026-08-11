@@ -75,7 +75,9 @@ export function calculateConfidence(input: QualityInput): ConfidenceResult {
 }
 
 function weightedCosineSimilarity(left: ScoreMap, right: ScoreMap, weights: ScoreMap): number {
-  const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])];
+  const keys = Object.keys(weights).length > 0
+    ? Object.keys(weights)
+    : [...new Set([...Object.keys(left), ...Object.keys(right)])];
   let dot = 0;
   let leftMagnitude = 0;
   let rightMagnitude = 0;
@@ -123,7 +125,10 @@ function scoreDifficultyFit(profile: ChampionLaneProfile, abilities: AbilityVect
 
 function scoreCandidate(input: RecommendationInput, profile: ChampionLaneProfile): Omit<RecommendationCandidate, 'category' | 'label' | 'reason'> & { eligibility: Record<string, boolean> } {
   const weights: ScoreMap = {};
-  for (const key of ABILITY_KEYS) {
+  const styleKeys = Object.keys(profile.requirementWeights).length > 0
+    ? Object.keys(profile.requirementWeights)
+    : Object.keys(profile.styleProfile);
+  for (const key of styleKeys) {
     const base = profile.requirementWeights[key] ?? 1;
     const confidence = input.confidence[key] ?? 0.5;
     weights[key] = base * (0.4 + 0.6 * confidence);
@@ -134,10 +139,11 @@ function scoreCandidate(input: RecommendationInput, profile: ChampionLaneProfile
   let deficitCount = 0;
   let deficitAmount = 0;
   let criticalDeficit = false;
-  for (const key of ABILITY_KEYS) {
+  const requirementKeys = Object.keys(profile.minimumRequirements).filter((key) => Object.keys(profile.requirementWeights).length === 0 || profile.requirementWeights[key] !== undefined);
+  for (const key of requirementKeys) {
     const requirement = profile.minimumRequirements[key] ?? 0;
     const weight = profile.requirementWeights[key] ?? 1;
-    const userValue = input.abilities[key] ?? 0;
+    const userValue = input.abilities[key as keyof AbilityVector] ?? 0;
     const beginnerTolerance = input.experience.beginner && weight < 0.8 ? 0.05 : 0;
     const deficit = Math.max(0, requirement - beginnerTolerance - userValue);
     weightedShortfall += weight * deficit * deficit;
@@ -152,9 +158,11 @@ function scoreCandidate(input: RecommendationInput, profile: ChampionLaneProfile
   const readiness = Math.exp(-6 * shortfall);
   const preferenceMatch = scorePreferences(input.preferences, profile.preferenceProfile);
   const difficultyFit = scoreDifficultyFit(profile, input.abilities, input.experience.beginner);
-  const foundationStrength = clamp(mean(ABILITY_KEYS.map((key) => {
+  const foundationStrength = requirementKeys.length === 0 ? 0.5 : clamp(mean(requirementKeys.map((key) => {
     const requirement = profile.minimumRequirements[key] ?? 0;
-    return (input.abilities[key] ?? 0) >= requirement ? 1 : 0;
+    const weight = profile.requirementWeights[key] ?? 1;
+    const beginnerTolerance = input.experience.beginner && weight < 0.8 ? 0.05 : 0;
+    return (input.abilities[key as keyof AbilityVector] ?? 0) >= requirement - beginnerTolerance ? 1 : 0;
   })));
   const deficitConcentration = deficitCount === 0 ? 1 : clamp(1 - Math.max(0, deficitCount - 1) / 4);
   const trainability = profile.trainingTags.length > 0 ? 1 : 0.35;
