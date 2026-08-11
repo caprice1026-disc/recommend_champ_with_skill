@@ -20,7 +20,7 @@
 - [x] (2026-08-12) ローカルCloudflare Vite開発、build、設定検証、Vitest、ブラウザの診断導線を検証する。
 - [ ] Cloudflare移行後の同等性を確認してから旧FastAPI/Docker/Pythonを削除する。
 - [x] (2026-08-12) README、CI、ExecPlanを更新した。最終監査で新規Issue #29〜#37を登録し、修正・検証後にクローズする。
-- [ ] (2026-08-12) 監査修正をコミット`d7d3a69`として`main`へpushした。GitHub Issue #29〜#37へ修正内容をコメントし、すべてクローズした。追加監査Issue #38は修正・検証後にクローズする。現在のOpen Issueは1件である。
+- [x] (2026-08-12) 監査修正をコミット`d7d3a69`、追加監査修正を`4bf6198`として`main`へpushした。GitHub Issue #29〜#38へ修正内容をコメントし、すべてクローズした。現在のOpen Issueは0件である。
 - [ ] Cloudflare本番Previewを認証済みアカウントと実在D1 IDで検証し、検証後に旧構成を削除する。
 
 ## Surprises & Discoveries
@@ -174,4 +174,4 @@ Workerの入口は`fetch(request: Request, env: Env, ctx: ExecutionContext): Pro
 
 更新記録: 2026-08-12、監査修正を`d7d3a69`として`main`へpushした。GitHub Issue #29〜#37へ修正内容と検証範囲をコメントし、すべて`completed`でクローズした。検索結果上のOpen Issueは0件である。Cloudflare認証、remote D1、実Riot API、Docker Desktop Linux Engineは引き続き外部環境依存の未検証項目として残し、認証・実在ID・Secretなしに旧FastAPI/Docker/Pythonを削除しない方針を維持する。
 
-更新記録: 2026-08-12、追加Issue #38の再現テストが実装前に201で通過してしまうことを確認した。`subscores`、推薦bucket、推薦candidateを明示的な集約形として検証し、ネストしたrawCoordinates等のキー、過剰な深さ・配列・文字列を拒否するよう修正した。修正後はWorker API 15テストを含む全13ファイル62テスト、lint、設定検証、カタログ検証、build、local D1 smokeを成功させた。READMEの実績件数を62へ更新した。Issue #38はコミット・push後に修正コメントを追加してクローズする。
+更新記録: 2026-08-12、追加Issue #38の再現テストが実装前に201で通過してしまうことを確認した。`subscores`、推薦bucket、推薦candidateを明示的な集約形として検証し、ネストしたrawCoordinates等のキー、過剰な深さ・配列・文字列を拒否するよう修正した。修正後はWorker API 15テストを含む全13ファイル62テスト、lint、設定検証、カタログ検証、build、local D1 smoke、実ブラウザの全診断フローを成功させた。READMEの実績件数を62へ更新し、Issue #38へ修正コメントを追加してクローズした。
