@@ -1,6 +1,19 @@
 import type { D1DatabaseLike } from '../types';
 import { createId, sameTokenHash } from '../services/tokens';
 
+export interface RiotAccountRecord {
+  puuid: string;
+  game_name: string;
+  tag_line: string;
+  platform_region: string;
+}
+
+export interface RiotProfileCacheRecord {
+  payload: string;
+  fetched_at: string;
+  expires_at: string;
+}
+
 export async function saveDiagnosis(db: D1DatabaseLike, payload: Record<string, unknown>, deleteTokenHash: string): Promise<string> {
   const resultId = createId('result');
   await db.prepare(
@@ -30,4 +43,24 @@ export async function upsertRiotAccount(db: D1DatabaseLike, account: { puuid: st
   await db.prepare(
     'INSERT INTO riot_accounts (puuid, game_name, tag_line, platform_region, last_verified_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(puuid) DO UPDATE SET game_name = excluded.game_name, tag_line = excluded.tag_line, platform_region = excluded.platform_region, last_verified_at = excluded.last_verified_at',
   ).bind(account.puuid, account.gameName, account.tagLine, account.platformRegion, account.verifiedAt).run();
+}
+
+export async function findRiotAccount(db: D1DatabaseLike, account: { gameName: string; tagLine: string; platformRegion: string }): Promise<RiotAccountRecord | null> {
+  return db.prepare(
+    'SELECT puuid, game_name, tag_line, platform_region FROM riot_accounts WHERE game_name = ? AND tag_line = ? AND platform_region = ?',
+  ).bind(account.gameName, account.tagLine, account.platformRegion).first<RiotAccountRecord>();
+}
+
+export async function getRiotProfileCache(db: D1DatabaseLike, puuid: string, cacheKey: string): Promise<RiotProfileCacheRecord | null> {
+  const record = await db.prepare(
+    'SELECT payload, fetched_at, expires_at FROM riot_profile_cache WHERE puuid = ? AND cache_key = ?',
+  ).bind(puuid, cacheKey).first<RiotProfileCacheRecord>();
+  if (!record || Number.isNaN(Date.parse(record.expires_at)) || Date.parse(record.expires_at) <= Date.now()) return null;
+  return record;
+}
+
+export async function upsertRiotProfileCache(db: D1DatabaseLike, input: { puuid: string; cacheKey: string; payload: string; fetchedAt: string; expiresAt: string }): Promise<void> {
+  await db.prepare(
+    'INSERT INTO riot_profile_cache (puuid, cache_key, payload, fetched_at, expires_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(puuid, cache_key) DO UPDATE SET payload = excluded.payload, fetched_at = excluded.fetched_at, expires_at = excluded.expires_at',
+  ).bind(input.puuid, input.cacheKey, input.payload, input.fetchedAt, input.expiresAt).run();
 }

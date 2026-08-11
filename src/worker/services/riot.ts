@@ -1,4 +1,4 @@
-import { upsertRiotAccount } from '../repositories/d1';
+import { findRiotAccount, getRiotProfileCache, upsertRiotAccount, upsertRiotProfileCache } from '../repositories/d1';
 import type { D1DatabaseLike, WorkerEnv } from '../types';
 
 const ACCOUNT_HOSTS = {
@@ -8,6 +8,9 @@ const ACCOUNT_HOSTS = {
   sea: 'sea.api.riotgames.com',
 } as const;
 
+const ACCOUNT_CACHE_KEY = 'riot-account-verification';
+const ACCOUNT_CACHE_TTL_MS = 60 * 60 * 1000;
+
 export class RiotUpstreamError extends Error {
   constructor(public readonly status: number, message: string) {
     super(message);
@@ -16,6 +19,18 @@ export class RiotUpstreamError extends Error {
 }
 
 export async function verifyRiotId(input: { gameName: string; tagLine: string; platformRegion: keyof typeof ACCOUNT_HOSTS }, env: WorkerEnv, db: D1DatabaseLike): Promise<{ verified: true; platformRegion: string; fetchedAt: string }> {
+  const existing = await findRiotAccount(db, input);
+  if (existing) {
+    const cached = await getRiotProfileCache(db, existing.puuid, ACCOUNT_CACHE_KEY);
+    if (cached) {
+      try {
+        const payload = JSON.parse(cached.payload) as { platformRegion?: unknown };
+        if (payload.platformRegion === input.platformRegion) return { verified: true, platformRegion: input.platformRegion, fetchedAt: cached.fetched_at };
+      } catch {
+        // Treat malformed cache data as a miss and refresh it from Riot.
+      }
+    }
+  }
   if (!env.RIOT_API_KEY) throw new RiotUpstreamError(503, 'Riot API verification is not configured');
   const host = ACCOUNT_HOSTS[input.platformRegion];
   const endpoint = `https://${host}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(input.gameName)}/${encodeURIComponent(input.tagLine)}`;
@@ -28,5 +43,12 @@ export async function verifyRiotId(input: { gameName: string; tagLine: string; p
   if (typeof account.puuid !== 'string' || account.puuid.length < 10) throw new RiotUpstreamError(502, 'Riot API response was invalid');
   const fetchedAt = new Date().toISOString();
   await upsertRiotAccount(db, { puuid: account.puuid, gameName: typeof account.gameName === 'string' ? account.gameName : input.gameName, tagLine: typeof account.tagLine === 'string' ? account.tagLine : input.tagLine, platformRegion: input.platformRegion, verifiedAt: fetchedAt });
+  await upsertRiotProfileCache(db, {
+    puuid: account.puuid,
+    cacheKey: ACCOUNT_CACHE_KEY,
+    payload: JSON.stringify({ platformRegion: input.platformRegion }),
+    fetchedAt,
+    expiresAt: new Date(Date.now() + ACCOUNT_CACHE_TTL_MS).toISOString(),
+  });
   return { verified: true, platformRegion: input.platformRegion, fetchedAt };
 }

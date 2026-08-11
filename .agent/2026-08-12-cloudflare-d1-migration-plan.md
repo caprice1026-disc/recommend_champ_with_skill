@@ -153,3 +153,11 @@ Workerの入口は`fetch(request: Request, env: Env, ctx: ExecutionContext): Pro
 更新記録: 2026-08-12、Goal本文と現行リポジトリの実態を反映して初版を作成した。Cloudflare公式資料の確認結果と、既存削除APIにtokenがないという実装差分を記録した。
 
 更新記録: 2026-08-12、Vite開発時に未来互換日が拒否されたため、`wrangler.jsonc`のcompatibility dateを`2026-08-11`へ調整した。
+
+更新記録: 2026-08-12、追加監査で見つかったRiotキャッシュ未実装を修正した。`riot_accounts`と`riot_profile_cache`を参照し、1時間の有効期限、期限切れ時の再取得、破損キャッシュ時の再取得を実装し、PUUIDをクライアントへ返さないことをテストした。併せてmanifestの3設定バージョン整合性、Content-Lengthがない場合を含む256 KiB入力制限、Riot設定・上流エラーの標準化を追加した。
+
+更新記録: 2026-08-12、ブラウザでクイック診断を全8テスト完走した際、メンタルテストのフェーズ表示が再レンダーごとにタイマーをリセットして停止する不具合を確認した。`MentalRound`のフェーズ時間配列を`useMemo`で安定化し、練習3フェーズと本番3フェーズが完了するテストを追加した。修正後は結果画面、保存、削除、フィードバック、SPAの直接URLリロードまで確認した。
+
+更新記録: 2026-08-12、最終ローカル検証は`npm.cmd run test:run`（9 files / 49 tests）、`npm.cmd run lint`、`npm.cmd run config:validate`、`npm.cmd run catalog:check`、`npm.cmd run build`、`npm.cmd run db:migrate:local`、`git diff --check`がすべて成功した。Worker smokeはhealth/root/SPAが200、保存201、削除204、feedback201、Riot未設定503、サイズ超過400（`PAYLOAD_TOO_LARGE`）を確認した。
+
+更新記録: 2026-08-12、READMEへRiotキャッシュ、タイマー・サイズ制限、ローカル検証結果を追記した。WranglerログインはCloudflareの認証コード待ちでタイムアウトしたため、実アカウントでのPreview、remote D1 migration、実Riot API upstreamは未確認のまま保留する。実在するD1 ID/API keyを得るまで、FastAPI、Docker、Python旧構成は削除しない。

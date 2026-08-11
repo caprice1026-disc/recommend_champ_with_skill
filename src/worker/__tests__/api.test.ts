@@ -30,7 +30,44 @@ class FakeDb {
   }
 }
 
-function environment(db = new FakeDb()): WorkerEnv & { db: FakeDb } {
+class RiotCacheDb {
+  account: { puuid: string; game_name: string; tag_line: string; platform_region: string } | null = null;
+  cache: { payload: string; fetched_at: string; expires_at: string } | null = null;
+  readonly queries: RecordedQuery[] = [];
+
+  prepare(sql: string) {
+    let values: unknown[] = [];
+    const statement = {
+      bind: (...bound: unknown[]) => {
+        values = bound;
+        this.queries.push({ sql, values: bound });
+        return statement;
+      },
+      first: async <T>() => {
+        if (sql.includes('FROM riot_accounts')) return this.account as T | null;
+        if (sql.includes('FROM riot_profile_cache')) return this.cache as T | null;
+        return null;
+      },
+      run: async <T>() => {
+        if (sql.includes('INSERT INTO riot_accounts')) {
+          this.account = {
+            puuid: String(values[0]),
+            game_name: String(values[1]),
+            tag_line: String(values[2]),
+            platform_region: String(values[3]),
+          };
+        }
+        if (sql.includes('INSERT INTO riot_profile_cache')) {
+          this.cache = { payload: String(values[2]), fetched_at: String(values[3]), expires_at: String(values[4]) };
+        }
+        return { success: true, meta: { changes: 1 } } as T;
+      },
+    };
+    return statement;
+  }
+}
+
+function environment<T extends NonNullable<WorkerEnv['DB']>>(db: T = new FakeDb() as unknown as T): WorkerEnv & { db: T } {
   return {
     db,
     DB: db,
@@ -88,6 +125,20 @@ describe('Cloudflare Worker API', () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'INVALID_PAYLOAD' } });
     expect(db.queries).toHaveLength(0);
+  });
+
+  it('rejects oversized bodies even when content-length is omitted', async () => {
+    const response = await worker.fetch(
+      new Request('https://example.test/api/feedback', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify('x'.repeat(260_001)),
+      }),
+      environment(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'PAYLOAD_TOO_LARGE' } });
   });
 
   it('stores only an aggregate result and returns a one-time delete token', async () => {
@@ -165,5 +216,53 @@ describe('Cloudflare Worker API', () => {
     const upstreamCall = (upstream.mock.calls as unknown as Array<[string, RequestInit]>)[0];
     expect(String(upstreamCall[0])).toContain('/riot/account/v1/accounts/by-riot-id/Hodaka/JP1');
     expect(upstreamCall[1].headers).toMatchObject({ Authorization: 'Bearer secret-riot-key' });
+  });
+
+  it('uses a fresh Riot profile cache and refreshes it after expiry', async () => {
+    const db = new RiotCacheDb();
+    const upstream = vi.fn(async () => new Response(JSON.stringify({ puuid: 'private-puuid', gameName: 'Hodaka', tagLine: 'JP1' }), { status: 200 }));
+    vi.stubGlobal('fetch', upstream);
+    const request = () => new Request('https://example.test/api/riot/verify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ consentToRiot: true, gameName: 'Hodaka', tagLine: 'JP1', platformRegion: 'americas' }),
+    });
+
+    await worker.fetch(request(), { ...environment(db), RIOT_API_KEY: 'secret-riot-key' });
+    await worker.fetch(request(), { ...environment(db), RIOT_API_KEY: 'secret-riot-key' });
+    expect(upstream).toHaveBeenCalledTimes(1);
+    expect(db.cache?.expires_at).toBeTruthy();
+
+    db.cache = { ...db.cache!, expires_at: '2020-01-01T00:00:00.000Z' };
+    await worker.fetch(request(), { ...environment(db), RIOT_API_KEY: 'secret-riot-key' });
+    expect(upstream).toHaveBeenCalledTimes(2);
+  });
+
+  it('normalizes Riot configuration and upstream failures without exposing internals', async () => {
+    const missingKeyResponse = await worker.fetch(
+      new Request('https://example.test/api/riot/verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ consentToRiot: true, gameName: 'Hodaka', tagLine: 'JP1', platformRegion: 'americas' }),
+      }),
+      environment(),
+    );
+    expect(missingKeyResponse.status).toBe(503);
+    await expect(missingKeyResponse.json()).resolves.toMatchObject({ error: { code: 'RIOT_NOT_CONFIGURED' } });
+
+    const upstream = vi.fn(async () => new Response('private upstream body', { status: 429 }));
+    vi.stubGlobal('fetch', upstream);
+    const rateLimitedResponse = await worker.fetch(
+      new Request('https://example.test/api/riot/verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ consentToRiot: true, gameName: 'Hodaka', tagLine: 'JP1', platformRegion: 'americas' }),
+      }),
+      { ...environment(), RIOT_API_KEY: 'secret-riot-key' },
+    );
+    expect(rateLimitedResponse.status).toBe(429);
+    const errorBody = await rateLimitedResponse.text();
+    expect(errorBody).not.toContain('private upstream body');
+    expect(errorBody).not.toContain('secret-riot-key');
   });
 });

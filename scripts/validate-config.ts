@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import Ajv2020 from 'ajv/dist/2020.js';
-import { assertConfigInvariants } from './config-invariants';
+import { assertConfigInvariants, assertManifestConsistency } from './config-invariants';
 
 const configDir = resolve('data/config/v1');
 const schemaDir = resolve(configDir, 'schemas');
@@ -41,6 +41,13 @@ const catalog = documents.get('champion_catalog.json');
 if (catalog) {
   const invariantErrors = assertConfigInvariants({ championCatalog: catalog });
   errors.push(...invariantErrors.map((issue) => `champion_catalog ${issue}`));
+}
+
+const manifest = documents.get('manifest.json');
+if (manifest) {
+  errors.push(...assertManifestConsistency(manifest, Object.fromEntries(
+    [...documents.entries()].filter(([name]) => name !== 'manifest.json'),
+  )).map((issue) => `manifest ${issue}`));
 }
 
 const lane = documents.get('champion_lane_profiles.json');

@@ -500,11 +500,19 @@ function DecisionRound({ round, detailed, configuration, onDone }: RoundProps) {
 
 function MentalRound({ round, detailed, configuration, onDone }: RoundProps) {
   const phases = ['通常', 'プレッシャー', '回復'] as const;
-  const phaseDurations = round === 'practice'
+  const phaseDurations = useMemo(() => round === 'practice'
     ? [configuration.quick.mentalStability.practiceSeconds, configuration.quick.mentalStability.practiceSeconds, configuration.quick.mentalStability.practiceSeconds]
     : detailed
       ? [configuration.quick.mentalStability.normalSeconds, configuration.quick.mentalStability.stressSeconds, configuration.quick.mentalStability.recoverySeconds + configuration.detailedAdditions.mentalStability.recoverySeconds]
-      : [configuration.quick.mentalStability.normalSeconds, configuration.quick.mentalStability.stressSeconds, configuration.quick.mentalStability.recoverySeconds];
+      : [configuration.quick.mentalStability.normalSeconds, configuration.quick.mentalStability.stressSeconds, configuration.quick.mentalStability.recoverySeconds], [
+        round,
+        detailed,
+        configuration.quick.mentalStability.practiceSeconds,
+        configuration.quick.mentalStability.normalSeconds,
+        configuration.quick.mentalStability.stressSeconds,
+        configuration.quick.mentalStability.recoverySeconds,
+        configuration.detailedAdditions.mentalStability.recoverySeconds,
+      ]);
   const [phase, setPhase] = useState(0);
   const [seconds, setSeconds] = useState(phaseDurations[0]);
   const [phaseScores, setPhaseScores] = useState<number[][]>(() => [[], [], []]);

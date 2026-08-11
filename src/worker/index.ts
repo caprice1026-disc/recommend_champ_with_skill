@@ -16,6 +16,10 @@ function error(code: string, message: string, status: number, requestId: string)
   return json({ error: { code, message, requestId } }, status, requestId);
 }
 
+function bodyError(cause: unknown, requestId: string, invalidMessage: string): Response {
+  return error(cause instanceof Error && cause.message === 'PAYLOAD_TOO_LARGE' ? 'PAYLOAD_TOO_LARGE' : 'INVALID_JSON', cause instanceof Error && cause.message === 'PAYLOAD_TOO_LARGE' ? 'リクエストが大きすぎます' : invalidMessage, 400, requestId);
+}
+
 function requestIdFor(request: Request): string {
   return request.headers.get('x-request-id')?.slice(0, 100) || crypto.randomUUID();
 }
@@ -23,7 +27,9 @@ function requestIdFor(request: Request): string {
 async function body(request: Request): Promise<unknown> {
   const contentLength = Number(request.headers.get('content-length') ?? '0');
   if (contentLength > 256_000) throw new Error('PAYLOAD_TOO_LARGE');
-  return request.json();
+  const raw = await request.text();
+  if (new TextEncoder().encode(raw).byteLength > 256_000) throw new Error('PAYLOAD_TOO_LARGE');
+  return JSON.parse(raw) as unknown;
 }
 
 function database(env: WorkerEnv, requestId: string): NonNullable<WorkerEnv['DB']> | Response {
@@ -49,7 +55,7 @@ async function api(request: Request, env: WorkerEnv, requestId: string): Promise
   const deleteMatch = url.pathname.match(/^\/api\/diagnosis-results\/([^/]+)$/);
   if (request.method === 'DELETE' && deleteMatch) {
     let parsed: unknown;
-    try { parsed = await body(request); } catch { return error('INVALID_JSON', '削除tokenが必要です', 400, requestId); }
+    try { parsed = await body(request); } catch (cause) { return bodyError(cause, requestId, '削除tokenが必要です'); }
     const token = parseDeleteToken(parsed);
     if (!token) return error('DELETE_TOKEN_REQUIRED', '削除tokenが必要です', 400, requestId);
     const db = database(env, requestId);
@@ -60,7 +66,7 @@ async function api(request: Request, env: WorkerEnv, requestId: string): Promise
 
   if (request.method === 'POST' && url.pathname === '/api/feedback') {
     let parsed: unknown;
-    try { parsed = await body(request); } catch { return error('INVALID_JSON', 'リクエスト形式が不正です', 400, requestId); }
+    try { parsed = await body(request); } catch (cause) { return bodyError(cause, requestId, 'リクエスト形式が不正です'); }
     const result = parseFeedbackPayload(parsed);
     if (!result.ok) return error('INVALID_PAYLOAD', result.message, 400, requestId);
     const db = database(env, requestId);
@@ -71,7 +77,7 @@ async function api(request: Request, env: WorkerEnv, requestId: string): Promise
 
   if (request.method === 'POST' && url.pathname === '/api/riot/verify') {
     let parsed: unknown;
-    try { parsed = await body(request); } catch { return error('INVALID_JSON', 'リクエスト形式が不正です', 400, requestId); }
+    try { parsed = await body(request); } catch (cause) { return bodyError(cause, requestId, 'リクエスト形式が不正です'); }
     const input = parseRiotVerificationPayload(parsed);
     if (!input.ok) return error(input.consentRequired ? 'RIOT_CONSENT_REQUIRED' : 'INVALID_PAYLOAD', input.message, input.consentRequired ? 403 : 400, requestId);
     const db = database(env, requestId);

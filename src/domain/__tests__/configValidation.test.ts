@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertConfigInvariants } from '../../../scripts/config-invariants';
+import { assertConfigInvariants, assertManifestConsistency } from '../../../scripts/config-invariants';
 
 function validBundle() {
   return {
@@ -27,5 +27,30 @@ describe('static configuration invariants', () => {
 
   it('accepts unique catalog entries with complete metadata', () => {
     expect(assertConfigInvariants(validBundle())).toEqual([]);
+  });
+
+  it('rejects a configuration version that disagrees with the manifest', () => {
+    const errors = assertManifestConsistency(
+      {
+        testDefinitionVersion: '1.0.0',
+        championProfileVersion: '1.1.0',
+        recommendationConfigVersion: '1.0.0',
+        files: ['test_definitions.json', 'champion_catalog.json', 'recommendation_categories.json'],
+      },
+      {
+        'test_definitions.json': { schemaVersion: '0.9.0' },
+        'champion_catalog.json': { schemaVersion: '1.1.0' },
+        'recommendation_categories.json': { schemaVersion: '1.0.0' },
+      },
+    );
+
+    expect(errors).toContain('version mismatch: test_definitions.json expected 1.0.0 but found 0.9.0');
+  });
+
+  it('rejects a config file missing from the manifest file list', () => {
+    expect(assertManifestConsistency(
+      { testDefinitionVersion: '1.0.0', files: [] },
+      { 'test_definitions.json': { schemaVersion: '1.0.0' } },
+    )).toContain('manifest missing file: test_definitions.json');
   });
 });
