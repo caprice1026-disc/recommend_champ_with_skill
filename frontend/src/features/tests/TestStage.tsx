@@ -471,6 +471,7 @@ function DecisionRound({ round, detailed, configuration, onDone }: RoundProps) {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (answersRef.current[question] === null) advance(true);
+      else advance(false);
     }, maxSeconds * 1000);
     return () => window.clearTimeout(timer);
   }, [question, maxSeconds]);
