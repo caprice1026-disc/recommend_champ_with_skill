@@ -165,3 +165,5 @@ Workerの入口は`fetch(request: Request, env: Env, ctx: ExecutionContext): Pro
 更新記録: 2026-08-12、設計書全文の本文262段落・33表を抽出確認した。設計書の受入条件に対し、Riot Worker APIだけでなく利用者が操作できるUIが必要であることを確認したため、同意画面に任意のRiot ID確認パネルを追加した。確認成功時の公開コンテキストを`verified`、`platformRegion`、`fetchedAt`へ限定し、Worker保存時もPUUID等の余分なキーを拒否するテストを追加した。
 
 更新記録: 2026-08-12、Riot確認UIの設計仕様を`docs/superpowers/specs/2026-08-12-riot-verification-ui-design.md`へ記録した。Client helper、UI、Worker validation、APIエラーの日本語化を実装し、Riot未設定のローカルブラウザでエラー表示後も校正へ進めることを確認した。Cloudflareログインは引き続き未認証であるため、実Riot成功フローとPreview検証は未完了とする。
+
+更新記録: 2026-08-12、Riot確認UIとプライバシー境界を含む実装を`a692afb`としてコミットした。現行コードで`npm.cmd run test:run`（11 files / 55 tests）、lint、設定・カタログ検証、build、local D1 migration、`git diff --check`を再確認した。buildとWranglerの初回sandbox実行は`spawn EPERM`だったが、制限外の単独実行では成功した。READMEのRiot操作・データ境界・ブラウザ確認項目も更新済みである。
