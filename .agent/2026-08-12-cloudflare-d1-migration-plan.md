@@ -20,7 +20,7 @@
 - [x] (2026-08-12) ローカルCloudflare Vite開発、build、設定検証、Vitest、ブラウザの診断導線を検証する。
 - [ ] Cloudflare移行後の同等性を確認してから旧FastAPI/Docker/Pythonを削除する。
 - [x] (2026-08-12) README、CI、ExecPlanを更新した。最終監査で新規Issue #29〜#37を登録し、修正・検証後にクローズする。
-- [ ] 監査修正をコミットして`main`へpushする。
+- [x] (2026-08-12) 監査修正をコミット`d7d3a69`として`main`へpushした。GitHub Issue #29〜#37へ修正内容をコメントし、すべてクローズした。現在のOpen Issueは0件である。
 - [ ] Cloudflare本番Previewを認証済みアカウントと実在D1 IDで検証し、検証後に旧構成を削除する。
 
 ## Surprises & Discoveries
@@ -62,7 +62,7 @@
 
 `wrangler whoami`は未認証だったため、本番Cloudflare Preview、実在D1へのremote migration、Riot API上流接続は未検証である。D1 IDやRiot APIキーを捏造せず、旧FastAPI/Docker/Pythonはこの状態では削除しない。認証済み環境でPreviewを検証した後に旧構成を削除し、mainへpushすることが残作業である。
 
-ローカル移行コミット`7cd0414`は2026-08-12に`origin/main`へpush済みである。監査修正はこのExecPlan更新と合わせて次のコミットで`main`へpushする。
+ローカル移行コミット`7cd0414`は2026-08-12に`origin/main`へpush済みである。監査修正コミット`d7d3a69`も`main`へpush済みで、GitHub Issue #29〜#37は修正コメント付きでクローズ済みである。
 
 ## Context and Orientation
 
@@ -171,3 +171,5 @@ Workerの入口は`fetch(request: Request, env: Env, ctx: ExecutionContext): Pro
 更新記録: 2026-08-12、Riot確認UIとプライバシー境界を含む実装を`a692afb`としてコミットした。現行コードで`npm.cmd run test:run`（11 files / 55 tests）、lint、設定・カタログ検証、build、local D1 migration、`git diff --check`を再確認した。buildとWranglerの初回sandbox実行は`spawn EPERM`だったが、制限外の単独実行では成功した。READMEのRiot操作・データ境界・ブラウザ確認項目も更新済みである。
 
 更新記録: 2026-08-12、最終コードベース監査でIssue #29〜#37をGitHubへ登録した。TDDで再現テストを先に追加し、Dockerfileを現行Workers/D1ローカル実行へ合わせ、feedbackのHTTPエラー処理、判断時間の上書き計測、Riotネットワークエラー標準化、診断セッションリセット、Riot同意チェックボックスのキーボード操作、Workerの0〜1正規化値検証を修正した。READMEのテスト件数を13ファイル61テストへ更新し、`RIOT_API_KEY` Secret登録手順を追加した。全テスト61件、lint、設定検証、カタログ検証、build、local D1 migration、`git diff --check`、Workers相当smokeを再実行して成功した。
+
+更新記録: 2026-08-12、監査修正を`d7d3a69`として`main`へpushした。GitHub Issue #29〜#37へ修正内容と検証範囲をコメントし、すべて`completed`でクローズした。検索結果上のOpen Issueは0件である。Cloudflare認証、remote D1、実Riot API、Docker Desktop Linux Engineは引き続き外部環境依存の未検証項目として残し、認証・実在ID・Secretなしに旧FastAPI/Docker/Pythonを削除しない方針を維持する。
