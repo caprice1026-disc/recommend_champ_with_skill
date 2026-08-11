@@ -83,7 +83,7 @@
 
 2026-08-11の実績:
 
-- 実装コミット: `a73ea7712148961c15fcc9ff383480354fa97371`（`main`、`origin/main`）。
+- 実装コミット: `a73ea7712148961c15fcc9ff383480354fa97371`、判断制限時間補強 `6ed1e36`（いずれも`main`へPush済み）。
 - 検証: frontend 31 tests、TypeScript lint、production build、backend 9 tests、generated catalog同期チェック、Chromeで環境確認・全スキップ・QWER校正・練習/本番遷移・反応速度本番完了を確認。Chrome console error/warnなし。
 - Docker: `docker compose config`で8080公開とhealthcheck設定を確認。Docker Desktop Linux Engine停止により`docker compose up --build`は実行できず、実コンテナ起動は未検証。
 - GitHub: #15はcompleted維持、#16〜#19・#21〜#28はcompletedでclose、#20は「主称号1件」仕様に合わせてnot_plannedでclose。
