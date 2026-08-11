@@ -1,7 +1,9 @@
-import type { DiagnosisSavePayload, FeedbackPayload } from '../types';
+import type { DiagnosisSavePayload, FeedbackPayload, PublicRiotContext } from '../types';
 
 const DIAGNOSIS_KEYS = new Set(['diagnosisVersion', 'consentToSave', 'abilityVector', 'subscores', 'confidence', 'recommendations', 'aptitudeTypes', 'configVersions', 'createdAt', 'riotContext']);
 const FEEDBACK_KEYS = new Set(['diagnosisVersion', 'satisfaction', 'selfReportedStrongChampions', 'frequentlyPlayedChampions', 'wouldTryRecommendation', 'comment', 'diagnosisResultId']);
+const RIOT_CONTEXT_KEYS = new Set(['verified', 'platformRegion', 'fetchedAt']);
+const RIOT_REGIONS = new Set(['americas', 'asia', 'europe', 'sea']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -25,9 +27,13 @@ export function parseDiagnosisPayload(value: unknown): { ok: true; payload: Diag
   if (typeof value.diagnosisVersion !== 'string' || value.diagnosisVersion.length === 0 || value.diagnosisVersion.length > 50) return { ok: false, message: 'diagnosisVersionが不正です' };
   if (!isFiniteNumberRecord(value.abilityVector) || !isRecord(value.subscores) || !isRecord(value.recommendations) || !isRecord(value.aptitudeTypes) || !isFiniteNumberRecord(value.confidence) || !isStringRecord(value.configVersions)) return { ok: false, message: '集約済み診断データが不正です' };
   if (typeof value.createdAt !== 'string' || Number.isNaN(Date.parse(value.createdAt))) return { ok: false, message: 'createdAtが不正です' };
-  if (value.riotContext !== undefined && !isRecord(value.riotContext)) return { ok: false, message: 'riotContextが不正です' };
-  const { consentToSave: _consentToSave, ...payload } = value;
-  return { ok: true, payload: payload as unknown as DiagnosisSavePayload };
+  let riotContext: PublicRiotContext | undefined;
+  if (value.riotContext !== undefined && value.riotContext !== null) {
+    if (!isRecord(value.riotContext) || !hasOnlyKeys(value.riotContext, RIOT_CONTEXT_KEYS) || value.riotContext.verified !== true || typeof value.riotContext.platformRegion !== 'string' || !RIOT_REGIONS.has(value.riotContext.platformRegion) || typeof value.riotContext.fetchedAt !== 'string' || Number.isNaN(Date.parse(value.riotContext.fetchedAt))) return { ok: false, message: 'riotContextが不正です' };
+    riotContext = { verified: true, platformRegion: value.riotContext.platformRegion as PublicRiotContext['platformRegion'], fetchedAt: value.riotContext.fetchedAt };
+  }
+  const { consentToSave: _consentToSave, riotContext: _rawRiotContext, ...payload } = value;
+  return { ok: true, payload: { ...payload, ...(riotContext ? { riotContext } : {}) } as unknown as DiagnosisSavePayload };
 }
 
 export function parseFeedbackPayload(value: unknown): { ok: true; payload: FeedbackPayload & { diagnosisResultId?: string } } | { ok: false; message: string } {

@@ -31,16 +31,16 @@ export async function verifyRiotId(input: { gameName: string; tagLine: string; p
       }
     }
   }
-  if (!env.RIOT_API_KEY) throw new RiotUpstreamError(503, 'Riot API verification is not configured');
+  if (!env.RIOT_API_KEY) throw new RiotUpstreamError(503, 'Riot API確認は現在利用できません');
   const host = ACCOUNT_HOSTS[input.platformRegion];
   const endpoint = `https://${host}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(input.gameName)}/${encodeURIComponent(input.tagLine)}`;
   const response = await fetch(endpoint, { headers: { Authorization: `Bearer ${env.RIOT_API_KEY}` } });
   if (!response.ok) {
     const status = response.status === 429 ? 429 : response.status === 404 ? 404 : 502;
-    throw new RiotUpstreamError(status, status === 404 ? 'Riot IDが見つかりません' : 'Riot API verification failed');
+    throw new RiotUpstreamError(status, status === 404 ? 'Riot IDが見つかりません' : status === 429 ? 'Riot APIの利用制限に達しました' : 'Riot APIに接続できません');
   }
   const account = await response.json() as { puuid?: unknown; gameName?: unknown; tagLine?: unknown };
-  if (typeof account.puuid !== 'string' || account.puuid.length < 10) throw new RiotUpstreamError(502, 'Riot API response was invalid');
+  if (typeof account.puuid !== 'string' || account.puuid.length < 10) throw new RiotUpstreamError(502, 'Riot APIの応答を確認できませんでした');
   const fetchedAt = new Date().toISOString();
   await upsertRiotAccount(db, { puuid: account.puuid, gameName: typeof account.gameName === 'string' ? account.gameName : input.gameName, tagLine: typeof account.tagLine === 'string' ? account.tagLine : input.tagLine, platformRegion: input.platformRegion, verifiedAt: fetchedAt });
   await upsertRiotProfileCache(db, {

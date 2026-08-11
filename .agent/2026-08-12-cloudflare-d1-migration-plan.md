@@ -161,3 +161,7 @@ Workerの入口は`fetch(request: Request, env: Env, ctx: ExecutionContext): Pro
 更新記録: 2026-08-12、最終ローカル検証は`npm.cmd run test:run`（9 files / 49 tests）、`npm.cmd run lint`、`npm.cmd run config:validate`、`npm.cmd run catalog:check`、`npm.cmd run build`、`npm.cmd run db:migrate:local`、`git diff --check`がすべて成功した。Worker smokeはhealth/root/SPAが200、保存201、削除204、feedback201、Riot未設定503、サイズ超過400（`PAYLOAD_TOO_LARGE`）を確認した。
 
 更新記録: 2026-08-12、READMEへRiotキャッシュ、タイマー・サイズ制限、ローカル検証結果を追記した。WranglerログインはCloudflareの認証コード待ちでタイムアウトしたため、実アカウントでのPreview、remote D1 migration、実Riot API upstreamは未確認のまま保留する。実在するD1 ID/API keyを得るまで、FastAPI、Docker、Python旧構成は削除しない。
+
+更新記録: 2026-08-12、設計書全文の本文262段落・33表を抽出確認した。設計書の受入条件に対し、Riot Worker APIだけでなく利用者が操作できるUIが必要であることを確認したため、同意画面に任意のRiot ID確認パネルを追加した。確認成功時の公開コンテキストを`verified`、`platformRegion`、`fetchedAt`へ限定し、Worker保存時もPUUID等の余分なキーを拒否するテストを追加した。
+
+更新記録: 2026-08-12、Riot確認UIの設計仕様を`docs/superpowers/specs/2026-08-12-riot-verification-ui-design.md`へ記録した。Client helper、UI、Worker validation、APIエラーの日本語化を実装し、Riot未設定のローカルブラウザでエラー表示後も校正へ進めることを確認した。Cloudflareログインは引き続き未認証であるため、実Riot成功フローとPreview検証は未完了とする。

@@ -8,6 +8,8 @@ import { TEST_DEFINITIONS } from '../domain/testTypes';
 import { createDiagnosticTestQueue, isPreferenceSetComplete, KEY_SEQUENCE, viewportStatus } from '../domain/testLogic';
 import type { ChampionLaneProfile, DiagnosticResult, Lane, RecommendationCandidate, ScoreMap } from '../domain/types';
 import { TestStage } from './features/tests/TestStage';
+import { RiotVerificationPanel } from './features/riot/RiotVerificationPanel';
+import type { PublicRiotContext } from './features/riot/riotVerification';
 
 type Screen = 'landing' | 'environment' | 'profile' | 'preferences' | 'consent' | 'calibration' | 'overview' | 'testing' | 'result';
 type JourneyMode = 'quick' | 'detailed' | 'retest';
@@ -135,8 +137,8 @@ function PreferencesScreen({ preferences, setPreferences, onContinue }: { prefer
   return <section className="screen screen--narrow"><Stepper current={2} labels={['環境', 'プロフィール', '好み', '同意', '校正']} /><div className="section-heading"><p className="eyebrow">03 / PLAY STYLE</p><h1>勝ち方ではなく、<br /><em>好きな動き方。</em></h1><p>正解はありません。直感で答えるほど、チャンピオンとの相性が自然に出ます。</p></div><div className="question-card"><div className="question-card__top"><span>QUESTION {String(index + 1).padStart(2, '0')} / {PREFERENCE_QUESTIONS.length}</span><span>{Math.round((completedKeys.size / PREFERENCE_QUESTIONS.length) * 100)}% COMPLETE</span></div><div className="progress-line"><span style={{ width: `${(completedKeys.size / PREFERENCE_QUESTIONS.length) * 100}%` }} /></div><h2>{current[1]}</h2><div className="likert"><span>まったく違う</span><div>{[0, 0.25, 0.5, 0.75, 1].map((option) => <button key={option} type="button" className={completedKeys.has(current[0]) && Math.abs(value - option) < 0.01 ? 'is-selected' : ''} onClick={() => choose(option)} aria-label={`${option * 100}%` }><i /></button>)}</div><span>とても当てはまる</span></div><div className="question-card__footer"><button className="text-button" type="button" onClick={() => setIndex((currentIndex) => Math.max(0, currentIndex - 1))} disabled={index === 0}>← 前の質問</button><span>{completedKeys.has(current[0]) ? '回答済み。変更もできます' : '回答またはスキップしてください'}</span><button className="text-button" type="button" onClick={skipCurrent}>{index === PREFERENCE_QUESTIONS.length - 1 ? 'スキップして確認' : 'この質問をスキップ →'}</button></div></div><div className="screen-actions"><button className="button button--secondary" type="button" onClick={() => { setPreferences(DEFAULT_PREFERENCES); setCompletedKeys(new Set(questionKeys)); onContinue(); }}>すべてスキップして進む</button><button className="button button--primary" type="button" onClick={onContinue} disabled={!allCompleted}>同意設定へ進む <span>→</span></button></div></section>;
 }
 
-function ConsentScreen({ consent, setConsent, onContinue }: { consent: boolean; setConsent: (value: boolean) => void; onContinue: () => void }) {
-  return <section className="screen screen--narrow"><Stepper current={3} labels={['環境', 'プロフィール', '好み', '同意', '校正']} /><div className="section-heading"><p className="eyebrow">04 / DATA CHOICE</p><h1>結果の扱いを、<br /><em>あなたが選ぶ。</em></h1><p>測定中の生ログは画面内だけで使い、APIへ送信しません。保存する場合も、診断結果の集計値だけを対象にします。</p></div><div className="consent-card"><div className="consent-card__icon">◎</div><div><h2>診断結果を匿名保存する</h2><p>同意した場合のみ、能力ベクトル・サブスコア・信頼度・おすすめ結果を保存します。保存後は結果画面から削除できます。</p><label className="toggle-row"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span className="toggle" /><strong>{consent ? '保存を許可する' : '今回は保存しない'}</strong></label></div></div><div className="privacy-grid"><div><strong>保存しないもの</strong><span>クリック座標・キー入力・生タイムスタンプ</span></div><div><strong>保存されるもの</strong><span>集計済みスコア・診断バージョン</span></div></div><button className="button button--primary" type="button" onClick={onContinue}>校正へ進む <span>→</span></button></section>;
+function ConsentScreen({ consent, setConsent, riotContext, onRiotVerified, onContinue }: { consent: boolean; setConsent: (value: boolean) => void; riotContext: PublicRiotContext | null; onRiotVerified: (context: PublicRiotContext) => void; onContinue: () => void }) {
+  return <section className="screen screen--narrow"><Stepper current={3} labels={['環境', 'プロフィール', '好み', '同意', '校正']} /><div className="section-heading"><p className="eyebrow">04 / DATA CHOICE</p><h1>結果の扱いを、<br /><em>あなたが選ぶ。</em></h1><p>測定中の生ログは画面内だけで使い、APIへ送信しません。保存する場合も、診断結果の集計値だけを対象にします。</p></div><div className="consent-card"><div className="consent-card__icon">◎</div><div><h2>診断結果を匿名保存する</h2><p>同意した場合のみ、能力ベクトル・サブスコア・信頼度・おすすめ結果を保存します。保存後は結果画面から削除できます。</p><label className="toggle-row"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span className="toggle" /><strong>{consent ? '保存を許可する' : '今回は保存しない'}</strong></label></div></div><RiotVerificationPanel context={riotContext} onVerified={onRiotVerified} /><div className="privacy-grid"><div><strong>保存しないもの</strong><span>クリック座標・キー入力・生タイムスタンプ</span></div><div><strong>保存されるもの</strong><span>集計済みスコア・診断バージョン</span></div></div><button className="button button--primary" type="button" onClick={onContinue}>校正へ進む <span>→</span></button></section>;
 }
 
 function CalibrationStage({ onComplete, mode }: { onComplete: () => void; mode: JourneyMode }) {
@@ -239,6 +241,7 @@ function App() {
   const [profile, setProfile] = useState<UserProfile>({ displayName: '', experience: 'beginner', preferredLane: 'ALL' });
   const [preferences, setPreferences] = useState<ScoreMap>(DEFAULT_PREFERENCES);
   const [consent, setConsent] = useState(false);
+  const [riotContext, setRiotContext] = useState<PublicRiotContext | null>(null);
   const [candidates, setCandidates] = useState<ChampionLaneProfile[]>([]);
   const [testQueue, setTestQueue] = useState<TestId[]>(DEFAULT_TEST_QUEUE);
   const [runtimeConfig, setRuntimeConfig] = useState<RuntimeConfigSnapshot>({ manifest: {}, tests: DEFAULT_TEST_CONFIGURATION, source: 'static' });
@@ -258,7 +261,7 @@ function App() {
   const currentDefinition = useMemo(() => TEST_DEFINITIONS.find((item) => item.id === currentTest), [currentTest]);
   const stepIndex = screen === 'environment' ? 0 : screen === 'profile' ? 1 : screen === 'preferences' ? 2 : screen === 'consent' ? 3 : screen === 'calibration' ? 4 : 0;
 
-  const reset = () => { setScreen('landing'); setResult(null); setTestResults([]); setSavedResultId(null); setSavedDeleteToken(null); setNotice(null); setJourney('quick'); };
+  const reset = () => { setScreen('landing'); setResult(null); setTestResults([]); setSavedResultId(null); setSavedDeleteToken(null); setRiotContext(null); setNotice(null); setJourney('quick'); };
   const beginTests = (mode: JourneyMode, ids = DEFAULT_TEST_QUEUE, previous: TestResult[] = []) => { setJourney(mode); setTestQueue(mode === 'quick' || mode === 'detailed' ? createDiagnosticTestQueue(Date.now()) : ids); setQueueIndex(0); setTestResults(previous); setScreen('testing'); setNotice(null); };
   const finishTest = (testResult: TestResult) => {
     const nextResults = [...testResults.filter((item) => item.testId !== testResult.testId), testResult];
@@ -273,7 +276,7 @@ function App() {
     if (!consent || !result) return;
     try {
       const configVersions = Object.fromEntries(Object.entries(runtimeConfig.manifest).filter(([, value]) => typeof value === 'string'));
-      const response = await fetch('/api/diagnosis-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ diagnosisVersion: '1.0.0', consentToSave: true, abilityVector: result.abilities, subscores: result.subscores, confidence: result.confidence, recommendations: result.recommendations, aptitudeTypes: { primary: result.aptitudeTitle.id, ruleVersion: typeof runtimeConfig.manifest.aptitudeRuleVersion === 'string' ? runtimeConfig.manifest.aptitudeRuleVersion : '1.0.0' }, configVersions: { ...configVersions, source: runtimeConfig.source }, createdAt: result.createdAt ?? new Date().toISOString() }) });
+      const response = await fetch('/api/diagnosis-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ diagnosisVersion: '1.0.0', consentToSave: true, abilityVector: result.abilities, subscores: result.subscores, confidence: result.confidence, recommendations: result.recommendations, aptitudeTypes: { primary: result.aptitudeTitle.id, ruleVersion: typeof runtimeConfig.manifest.aptitudeRuleVersion === 'string' ? runtimeConfig.manifest.aptitudeRuleVersion : '1.0.0' }, configVersions: { ...configVersions, source: runtimeConfig.source }, ...(riotContext ? { riotContext } : {}), createdAt: result.createdAt ?? new Date().toISOString() }) });
       if (!response.ok) throw new Error('save failed');
       const body = await response.json() as { resultId: string; deleteToken: string };
       setSavedResultId(body.resultId); setSavedDeleteToken(body.deleteToken); sessionStorage.setItem(`lol-skill-lab:delete-token:${body.resultId}`, body.deleteToken); setNotice('診断結果を匿名保存しました。削除tokenはこのセッションでのみ保持します。');
@@ -288,7 +291,7 @@ function App() {
   if (screen === 'environment') content = <EnvironmentScreen onContinue={() => setScreen('profile')} />;
   if (screen === 'profile') content = <ProfileScreen profile={profile} setProfile={setProfile} onContinue={() => setScreen('preferences')} />;
   if (screen === 'preferences') content = <PreferencesScreen preferences={preferences} setPreferences={setPreferences} onContinue={() => setScreen('consent')} />;
-  if (screen === 'consent') content = <ConsentScreen consent={consent} setConsent={setConsent} onContinue={() => { setJourney('quick'); setScreen('calibration'); }} />;
+  if (screen === 'consent') content = <ConsentScreen consent={consent} setConsent={setConsent} riotContext={riotContext} onRiotVerified={setRiotContext} onContinue={() => { setJourney('quick'); setScreen('calibration'); }} />;
   if (screen === 'calibration') content = <CalibrationStage mode={journey} onComplete={() => setScreen(journey === 'retest' ? 'testing' : journey === 'quick' ? 'overview' : 'overview')} />;
   if (screen === 'overview') content = <OverviewScreen mode={journey} testQueue={testQueue} onStart={() => beginTests(journey)} />;
   if (screen === 'testing' && currentTest) content = <div className="testing-shell"><div className="test-progress"><div><span className="eyebrow">{journey === 'detailed' ? 'DETAILED DIAGNOSIS' : journey === 'retest' ? 'RETEST' : 'QUICK DIAGNOSIS'}</span><strong>{String(queueIndex + 1).padStart(2, '0')} / {String(testQueue.length).padStart(2, '0')}</strong><span>{currentDefinition?.name}</span></div><div className="test-progress__bar"><span style={{ width: `${(queueIndex / testQueue.length) * 100}%` }} /></div></div><TestStage key={`${journey}-${currentTest}`} testId={currentTest} mode={journey} configuration={runtimeConfig.tests} onComplete={finishTest} onAbort={() => { setNotice('診断を中断しました。完了済みのテストは結果に反映されません。'); setScreen('landing'); }} /></div>;

@@ -18,6 +18,12 @@ export interface WorkerEnv {
   RIOT_API_KEY?: string;
 }
 
+export interface PublicRiotContext {
+  verified: true;
+  platformRegion: 'americas' | 'asia' | 'europe' | 'sea';
+  fetchedAt: string;
+}
+
 export interface DiagnosisSavePayload {
   diagnosisVersion: string;
   abilityVector: Record<string, number>;
@@ -27,7 +33,7 @@ export interface DiagnosisSavePayload {
   aptitudeTypes: Record<string, unknown>;
   configVersions: Record<string, string>;
   createdAt: string;
-  riotContext?: Record<string, unknown>;
+  riotContext?: PublicRiotContext;
 }
 
 export interface FeedbackPayload {

@@ -40,7 +40,7 @@ Cloudflare Vite開発サーバーを起動します。
 
     Copy-Item .dev.vars.example .dev.vars
 
-Riot ID確認は診断結果保存とは別の同意を要求します。初期実装はACCOUNT-V1によるRiot ID確認と最小限の補助情報に限定し、Riot情報でabilityVectorを補正しません。
+Riot ID確認は同意画面の任意パネルから実行でき、診断結果保存とは別の同意を要求します。初期実装はACCOUNT-V1によるRiot ID確認と最小限の補助情報に限定し、Riot情報でabilityVectorや推薦スコアを補正しません。確認成功後にクライアント・保存payloadへ渡るのは`verified`、`platformRegion`、`fetchedAt`だけで、PUUIDや上流レスポンスは返しません。Riot APIキー未設定・ID不在・レート制限でも診断自体は継続できます。
 
 ## 設定検証とカタログ
 
@@ -61,7 +61,7 @@ Riot ID確認は診断結果保存とは別の同意を要求します。初期�
     npm.cmd run test:run
     npm.cmd run build
 
-ブラウザでは、環境確認、プロフィール、好みの回答または全スキップ、同意、校正、全テスト、結果、詳細診断・再テスト、任意保存、deleteTokenを使った削除、フィードバックを確認します。
+ブラウザでは、環境確認、プロフィール、好みの回答または全スキップ、保存同意、任意のRiot ID確認、校正、全テスト、結果、詳細診断・再テスト、任意保存、deleteTokenを使った削除、フィードバックを確認します。
 
 保存APIは`consentToSave: true`を必須とし、保存成功時に`resultId`と一度だけ使う`deleteToken`を返します。deleteTokenはハッシュだけがD1に保存されます。
 

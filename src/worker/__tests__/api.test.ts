@@ -161,6 +161,39 @@ describe('Cloudflare Worker API', () => {
     expect(db.queries.flatMap(({ values }) => values)).not.toContain(body.deleteToken);
   });
 
+  it('rejects private Riot identifiers in a diagnosis context', async () => {
+    const response = await worker.fetch(
+      new Request('https://example.test/api/diagnosis-results', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...validPayload, riotContext: { verified: true, platformRegion: 'asia', puuid: 'private-puuid' } }),
+      }),
+      environment(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'INVALID_PAYLOAD' } });
+  });
+
+  it('stores only the public Riot context fields in a diagnosis payload', async () => {
+    const db = new FakeDb();
+    const response = await worker.fetch(
+      new Request('https://example.test/api/diagnosis-results', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...validPayload, riotContext: { verified: true, platformRegion: 'asia', fetchedAt: '2026-08-12T00:00:00.000Z' } }),
+      }),
+      environment(db),
+    );
+
+    expect(response.status).toBe(201);
+    const insert = db.queries.find(({ sql }) => sql.includes('INSERT INTO diagnosis_results'));
+    expect(insert).toBeDefined();
+    const stored = JSON.parse(String(insert?.values[1])) as Record<string, unknown>;
+    expect(stored.riotContext).toEqual({ verified: true, platformRegion: 'asia', fetchedAt: '2026-08-12T00:00:00.000Z' });
+    expect(JSON.stringify(stored)).not.toContain('puuid');
+  });
+
   it('requires the delete token and deletes a matching result', async () => {
     const deleteToken = 'token-from-session-12345';
     const db = new FakeDb(await hashDeleteToken(deleteToken));
