@@ -14,9 +14,9 @@
 - [x] (2026-08-11) 設定スキーマを厳格化し、テスト設定APIと生成チャンピオンフォールバックを追加した。
 - [x] (2026-08-11) 実測メトリクス、経験値、設定スナップショット、能力別confidenceを実装した。
 - [x] (2026-08-11) 設定駆動のテスト条件とseed付きテスト順序を実装した。
-- [ ] 自動テスト、ブラウザ、Dockerで検証する。
-- [ ] 各Issueへ根拠付きコメントを行い、不要・重複・完了Issueを整理する。
-- [ ] mainへ段階的にコミット・Pushし、origin/mainのSHAを確認する。
+- [x] (2026-08-11) 自動テスト、ブラウザ、Docker設定を検証した。Docker実起動のみEngine停止のため未検証。
+- [x] (2026-08-11) 各Issueへ根拠付きコメントを行い、不要・仕様矛盾・完了Issueを整理した。
+- [x] (2026-08-11) mainへコミット・Pushし、origin/mainの追跡SHAを確認した。
 
 ## Surprises & Discoveries
 
@@ -81,4 +81,9 @@
 
 ## Outcomes & Retrospective
 
-未完了。各マイルストーン完了時に、変更ファイル、テスト出力、ブラウザ・Dockerの検証結果、Issueの状態、mainとorigin/mainのSHAをこの節へ追記する。
+2026-08-11の実績:
+
+- 実装コミット: `a73ea7712148961c15fcc9ff383480354fa97371`（`main`、`origin/main`）。
+- 検証: frontend 31 tests、TypeScript lint、production build、backend 9 tests、generated catalog同期チェック、Chromeで環境確認・全スキップ・QWER校正・練習/本番遷移・反応速度本番完了を確認。Chrome console error/warnなし。
+- Docker: `docker compose config`で8080公開とhealthcheck設定を確認。Docker Desktop Linux Engine停止により`docker compose up --build`は実行できず、実コンテナ起動は未検証。
+- GitHub: #15はcompleted維持、#16〜#19・#21〜#28はcompletedでclose、#20は「主称号1件」仕様に合わせてnot_plannedでclose。
