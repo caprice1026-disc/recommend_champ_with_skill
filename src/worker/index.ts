@@ -1,19 +1,27 @@
-import { deleteDiagnosis, saveDiagnosis, saveFeedback } from './repositories/d1';
+import { deleteDiagnosis, deleteExpiredDiagnosisResults, deleteExpiredRiotData, saveDiagnosis, saveFeedback } from './repositories/d1';
 import { parseDeleteToken, parseDiagnosisPayload, parseFeedbackPayload, parseRiotVerificationPayload } from './routes/validation';
 import { createDeleteToken, hashDeleteToken } from './services/tokens';
+import { checkRateLimit, clientRateLimitKey } from './services/rateLimit';
 import { RiotUpstreamError, verifyRiotId } from './services/riot';
 import type { WorkerEnv } from './types';
 export type { WorkerEnv } from './types';
 
-function json(data: unknown, status = 200, requestId?: string): Response {
+function json(data: unknown, status = 200, requestId?: string, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8', ...(requestId ? { 'x-request-id': requestId } : {}) },
+    headers: { 'content-type': 'application/json; charset=utf-8', ...(requestId ? { 'x-request-id': requestId } : {}), ...extraHeaders },
   });
 }
 
-function error(code: string, message: string, status: number, requestId: string): Response {
-  return json({ error: { code, message, requestId } }, status, requestId);
+function error(code: string, message: string, status: number, requestId: string, extraHeaders: Record<string, string> = {}): Response {
+  return json({ error: { code, message, requestId } }, status, requestId, extraHeaders);
+}
+
+async function rateLimitResponse(limiter: WorkerEnv['WRITE_RATE_LIMITER'] | WorkerEnv['RIOT_RATE_LIMITER'] | undefined, key: string, requestId: string): Promise<Response | null> {
+  const decision = await checkRateLimit(limiter, key);
+  if (decision === 'limited') return error('RATE_LIMITED', '短時間のリクエスト上限に達しました。少し待ってから再試行してください', 429, requestId, { 'retry-after': '60' });
+  if (decision === 'unavailable') return error('RATE_LIMITER_UNAVAILABLE', '現在この操作を利用できません。少し待ってから再試行してください', 503, requestId);
+  return null;
 }
 
 function bodyError(cause: unknown, requestId: string, invalidMessage: string): Response {
@@ -41,6 +49,8 @@ async function api(request: Request, env: WorkerEnv, requestId: string): Promise
   if (request.method === 'GET' && url.pathname === '/api/health') return json({ status: 'ok', service: 'lol-skill-lab' }, 200, requestId);
 
   if (request.method === 'POST' && url.pathname === '/api/diagnosis-results') {
+    const limited = await rateLimitResponse(env.WRITE_RATE_LIMITER, clientRateLimitKey(request, 'diagnosis-results'), requestId);
+    if (limited) return limited;
     let parsed: unknown;
     try { parsed = await body(request); } catch (cause) { return error(cause instanceof Error && cause.message === 'PAYLOAD_TOO_LARGE' ? 'PAYLOAD_TOO_LARGE' : 'INVALID_JSON', 'リクエスト形式が不正です', 400, requestId); }
     const result = parseDiagnosisPayload(parsed);
@@ -54,6 +64,8 @@ async function api(request: Request, env: WorkerEnv, requestId: string): Promise
 
   const deleteMatch = url.pathname.match(/^\/api\/diagnosis-results\/([^/]+)$/);
   if (request.method === 'DELETE' && deleteMatch) {
+    const limited = await rateLimitResponse(env.WRITE_RATE_LIMITER, clientRateLimitKey(request, 'diagnosis-delete'), requestId);
+    if (limited) return limited;
     let parsed: unknown;
     try { parsed = await body(request); } catch (cause) { return bodyError(cause, requestId, '削除tokenが必要です'); }
     const token = parseDeleteToken(parsed);
@@ -65,6 +77,8 @@ async function api(request: Request, env: WorkerEnv, requestId: string): Promise
   }
 
   if (request.method === 'POST' && url.pathname === '/api/feedback') {
+    const limited = await rateLimitResponse(env.WRITE_RATE_LIMITER, clientRateLimitKey(request, 'feedback'), requestId);
+    if (limited) return limited;
     let parsed: unknown;
     try { parsed = await body(request); } catch (cause) { return bodyError(cause, requestId, 'リクエスト形式が不正です'); }
     const result = parseFeedbackPayload(parsed);
@@ -80,6 +94,9 @@ async function api(request: Request, env: WorkerEnv, requestId: string): Promise
     try { parsed = await body(request); } catch (cause) { return bodyError(cause, requestId, 'リクエスト形式が不正です'); }
     const input = parseRiotVerificationPayload(parsed);
     if (!input.ok) return error(input.consentRequired ? 'RIOT_CONSENT_REQUIRED' : 'INVALID_PAYLOAD', input.message, input.consentRequired ? 403 : 400, requestId);
+    const riotKey = await hashDeleteToken(`${input.gameName.toLowerCase()}\u0000${input.tagLine.toLowerCase()}`);
+    const limited = await rateLimitResponse(env.RIOT_RATE_LIMITER, `riot-verify:${riotKey}`, requestId);
+    if (limited) return limited;
     const db = database(env, requestId);
     if (db instanceof Response) return db;
     try {
@@ -103,6 +120,11 @@ const worker = {
     } catch {
       return error('INTERNAL_ERROR', 'サーバーで処理に失敗しました', 500, requestId);
     }
+  },
+  async scheduled(_controller: ScheduledController, env: WorkerEnv): Promise<void> {
+    if (!env.DB) return;
+    await deleteExpiredDiagnosisResults(env.DB);
+    await deleteExpiredRiotData(env.DB);
   },
 };
 

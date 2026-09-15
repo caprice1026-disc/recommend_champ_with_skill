@@ -30,6 +30,15 @@ class FakeDb {
   }
 }
 
+class FakeRateLimiter {
+  readonly keys: string[] = [];
+  constructor(private readonly allowed: boolean) {}
+  async limit(input: { key: string }) {
+    this.keys.push(input.key);
+    return { success: this.allowed };
+  }
+}
+
 class RiotCacheDb {
   account: { puuid: string; game_name: string; tag_line: string; platform_region: string } | null = null;
   cache: { payload: string; fetched_at: string; expires_at: string } | null = null;
@@ -185,6 +194,48 @@ describe('Cloudflare Worker API', () => {
     expect(body.deleteToken.length).toBeGreaterThan(20);
     expect(db.queries.some(({ sql }) => sql.includes('INSERT INTO diagnosis_results'))).toBe(true);
     expect(db.queries.flatMap(({ values }) => values)).not.toContain(body.deleteToken);
+    const insert = db.queries.find(({ sql }) => sql.includes('INSERT INTO diagnosis_results'));
+    expect(typeof insert?.values[4]).toBe('string');
+    expect(Date.parse(String(insert?.values[4]))).toBeGreaterThan(Date.parse(validPayload.createdAt));
+  });
+
+  it('rejects write requests when the configured Cloudflare rate limiter denies them', async () => {
+    const db = new FakeDb();
+    const limiter = new FakeRateLimiter(false);
+    const response = await worker.fetch(
+      new Request('https://example.test/api/feedback', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-client-session': 'client-session-123456' },
+        body: JSON.stringify({ diagnosisVersion: '1.0.0', satisfaction: 'satisfied' }),
+      }),
+      { ...environment(db), WRITE_RATE_LIMITER: limiter },
+    );
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBe('60');
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'RATE_LIMITED' } });
+    expect(limiter.keys[0]).toContain('feedback:client-session-123456');
+    expect(db.queries).toHaveLength(0);
+  });
+
+  it('blocks Riot verification before touching D1 or the upstream when its limiter denies it', async () => {
+    const db = new FakeDb();
+    const limiter = new FakeRateLimiter(false);
+    const upstream = vi.fn();
+    vi.stubGlobal('fetch', upstream);
+    const response = await worker.fetch(
+      new Request('https://example.test/api/riot/verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ consentToRiot: true, gameName: 'Hodaka', tagLine: 'JP1', platformRegion: 'americas' }),
+      }),
+      { ...environment(db), RIOT_API_KEY: 'secret-riot-key', RIOT_RATE_LIMITER: limiter },
+    );
+
+    expect(response.status).toBe(429);
+    expect(limiter.keys[0]).toMatch(/^riot-verify:[a-f0-9]{64}$/);
+    expect(upstream).not.toHaveBeenCalled();
+    expect(db.queries).toHaveLength(0);
   });
 
   it('rejects private Riot identifiers in a diagnosis context', async () => {
@@ -356,5 +407,16 @@ describe('Cloudflare Worker API', () => {
     const errorBody = await response.text();
     expect(errorBody).toContain('RIOT_UPSTREAM_ERROR');
     expect(errorBody).not.toContain('private network detail');
+  });
+
+  it('runs scheduled retention cleanup without logging or exposing stored data', async () => {
+    const db = new FakeDb();
+    await worker.scheduled({} as ScheduledController, environment(db));
+
+    expect(db.queries.map(({ sql }) => sql)).toEqual(expect.arrayContaining([
+      expect.stringContaining('DELETE FROM diagnosis_results'),
+      expect.stringContaining('DELETE FROM riot_profile_cache'),
+      expect.stringContaining('DELETE FROM riot_accounts'),
+    ]));
   });
 });

@@ -11,6 +11,7 @@ import { TestStage } from './features/tests/TestStage';
 import { RiotVerificationPanel } from './features/riot/RiotVerificationPanel';
 import type { PublicRiotContext } from './features/riot/riotVerification';
 import { submitFeedback as submitFeedbackRequest } from './features/feedback/feedback';
+import { apiHeaders } from './data/clientSession';
 
 type Screen = 'landing' | 'environment' | 'profile' | 'preferences' | 'consent' | 'calibration' | 'overview' | 'testing' | 'result';
 type JourneyMode = 'quick' | 'detailed' | 'retest';
@@ -84,7 +85,7 @@ function Stepper({ current, labels }: { current: number; labels: string[] }) {
   return <div className="stepper" aria-label="診断ステップ">{labels.map((label, index) => <div key={label} className={`stepper__item ${index <= current ? 'is-active' : ''} ${index === current ? 'is-current' : ''}`}><span>{String(index + 1).padStart(2, '0')}</span><small>{label}</small></div>)}</div>;
 }
 
-function LandingScreen({ onStart }: { onStart: () => void }) {
+function LandingScreen({ onStart, hasSavedResult, onDeleteSaved }: { onStart: () => void; hasSavedResult: boolean; onDeleteSaved: () => void }) {
   return (
     <section className="screen screen--landing page-grid">
       <div className="hero-copy">
@@ -92,7 +93,8 @@ function LandingScreen({ onStart }: { onStart: () => void }) {
         <h1>あなたの強みを、<br /><em>チャンピオン</em>に変える。</h1>
         <p className="hero-copy__lead">反応・精度・予測・判断・メンタル。8つの実測テストとプレイの好みから、今のあなたに合うLoLチャンピオンを読み解きます。</p>
         <div className="hero-copy__actions"><button className="button button--primary button--large" type="button" onClick={onStart}>診断をはじめる <span>→</span></button><span className="action-note">クイック診断 約8分<br />詳細判定はあとから追加できます</span></div>
-        <div className="hero-trust"><span><b>8</b>測定カテゴリ</span><span><b>16</b>プレイ傾向質問</span><span><b>0</b>外部送信</span></div>
+        {hasSavedResult && <div className="saved-result-card"><div><strong>保存済みの診断結果があります</strong><small>削除tokenはこの端末に保管しています。保存期間は90日です。</small></div><button className="text-button" type="button" onClick={onDeleteSaved}>保存結果を削除</button></div>}
+        <div className="hero-trust"><span><b>8</b>測定カテゴリ</span><span><b>16</b>プレイ傾向質問</span><span><b>0</b>生ログ送信</span></div>
       </div>
       <div className="hero-visual" aria-label="診断レーダーのプレビュー">
         <div className="hero-visual__grid" />
@@ -139,7 +141,7 @@ function PreferencesScreen({ preferences, setPreferences, onContinue }: { prefer
 }
 
 function ConsentScreen({ consent, setConsent, riotContext, onRiotVerified, onContinue }: { consent: boolean; setConsent: (value: boolean) => void; riotContext: PublicRiotContext | null; onRiotVerified: (context: PublicRiotContext) => void; onContinue: () => void }) {
-  return <section className="screen screen--narrow"><Stepper current={3} labels={['環境', 'プロフィール', '好み', '同意', '校正']} /><div className="section-heading"><p className="eyebrow">04 / DATA CHOICE</p><h1>結果の扱いを、<br /><em>あなたが選ぶ。</em></h1><p>測定中の生ログは画面内だけで使い、APIへ送信しません。保存する場合も、診断結果の集計値だけを対象にします。</p></div><div className="consent-card"><div className="consent-card__icon">◎</div><div><h2>診断結果を匿名保存する</h2><p>同意した場合のみ、能力ベクトル・サブスコア・信頼度・おすすめ結果を保存します。保存後は結果画面から削除できます。</p><label className="toggle-row"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span className="toggle" /><strong>{consent ? '保存を許可する' : '今回は保存しない'}</strong></label></div></div><RiotVerificationPanel context={riotContext} onVerified={onRiotVerified} /><div className="privacy-grid"><div><strong>保存しないもの</strong><span>クリック座標・キー入力・生タイムスタンプ</span></div><div><strong>保存されるもの</strong><span>集計済みスコア・診断バージョン</span></div></div><button className="button button--primary" type="button" onClick={onContinue}>校正へ進む <span>→</span></button></section>;
+  return <section className="screen screen--narrow"><Stepper current={3} labels={['環境', 'プロフィール', '好み', '同意', '校正']} /><div className="section-heading"><p className="eyebrow">04 / DATA CHOICE</p><h1>結果の扱いを、<br /><em>あなたが選ぶ。</em></h1><p>測定中の生ログは画面内だけで使い、APIへ送信しません。保存・フィードバック・Riot ID確認を選んだ場合だけ、目的に必要な情報を送信します。</p></div><div className="consent-card"><div className="consent-card__icon">◎</div><div><h2>診断結果を匿名保存する</h2><p>同意した場合のみ、能力ベクトル・サブスコア・信頼度・おすすめ結果を保存します。保存後は結果画面またはこの端末のホーム画面から削除できます。保存期間は90日です。</p><label className="toggle-row"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span className="toggle" /><strong>{consent ? '保存を許可する' : '今回は保存しない'}</strong></label></div></div><RiotVerificationPanel context={riotContext} onVerified={onRiotVerified} /><div className="privacy-grid"><div><strong>外部へ送らないもの</strong><span>生クリック座標・キー入力列・フレーム軌道・個別試行ログ</span></div><div><strong>選択時に送られるもの</strong><span>保存：集約値／Riot確認：公開コンテキストのみ</span></div></div><button className="button button--primary" type="button" onClick={onContinue}>校正へ進む <span>→</span></button></section>;
 }
 
 function CalibrationStage({ onComplete, mode }: { onComplete: () => void; mode: JourneyMode }) {
@@ -191,6 +193,45 @@ function OverviewScreen({ onStart, mode, testQueue }: { onStart: () => void; mod
 
 function AbilityBars({ result }: { result: DiagnosticResult }) {
   return <div className="ability-panel"><div className="panel-heading"><div><p className="eyebrow">ABILITY VECTOR</p><h2>あなたの操作プロファイル</h2></div><span className="status-chip">{result.mode === 'detailed' ? 'DETAILED' : 'QUICK READ'}</span></div><div className="ability-list">{Object.entries(result.abilities).map(([key, value]) => <div className="ability-row" key={key}><div className="ability-row__label"><span>{ABILITY_LABELS[key] ?? key}</span><b>{signalLabel(value)}</b></div><div className="ability-signal" aria-label={`${ABILITY_LABELS[key] ?? key} ${signalLabel(value)}`}><span className={value !== undefined && value >= 0.34 ? 'is-on' : ''} /><span className={value !== undefined && value >= 0.5 ? 'is-on' : ''} /><span className={value !== undefined && value >= 0.72 ? 'is-on' : ''} /></div><small>{value !== undefined && value >= 0.72 ? '強みとして出ています' : value !== undefined && value >= 0.5 ? '伸びしろを含む安定域' : '練習で変化しやすい領域'}</small></div>)}</div><div className="aptitude-title-card"><p className="eyebrow">PLAY TITLE</p><h3>{result.aptitudeTitle.name}</h3><p>{result.aptitudeTitle.description}</p><div className="tag-list">{result.aptitudeTitle.signals.map((signal) => <span key={signal}>{ABILITY_LABELS[signal] ?? signal}</span>)}</div></div></div>;
+}
+
+const DELETE_RECORD_STORAGE_KEY = 'lol-skill-lab:delete-record';
+interface StoredDeleteRecord {
+  resultId: string;
+  deleteToken: string;
+  expiresAt?: string;
+}
+
+function readStoredDeleteRecord(): StoredDeleteRecord | null {
+  try {
+    const raw = localStorage.getItem(DELETE_RECORD_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredDeleteRecord>;
+    if (typeof parsed.resultId !== 'string' || parsed.resultId.length === 0 || parsed.resultId.length > 128 || typeof parsed.deleteToken !== 'string' || parsed.deleteToken.length === 0 || parsed.deleteToken.length > 256) return null;
+    if (typeof parsed.expiresAt === 'string') {
+      const expiresAt = Date.parse(parsed.expiresAt);
+      if (Number.isNaN(expiresAt) || expiresAt <= Date.now()) {
+        localStorage.removeItem(DELETE_RECORD_STORAGE_KEY);
+        return null;
+      }
+    }
+    return { resultId: parsed.resultId, deleteToken: parsed.deleteToken, ...(typeof parsed.expiresAt === 'string' ? { expiresAt: parsed.expiresAt } : {}) };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredDeleteRecord(record: StoredDeleteRecord): boolean {
+  try {
+    localStorage.setItem(DELETE_RECORD_STORAGE_KEY, JSON.stringify(record));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearStoredDeleteRecord(): void {
+  try { localStorage.removeItem(DELETE_RECORD_STORAGE_KEY); } catch { /* Storage may be disabled. */ }
 }
 
 const DATA_DRAGON_KEYS: Record<string, string> = { 'lee-sin': 'LeeSin', 'kai-sa': 'Kaisa' };
@@ -249,8 +290,8 @@ function App() {
   const [queueIndex, setQueueIndex] = useState(0);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [result, setResult] = useState<DiagnosticResult | null>(null);
-  const [savedResultId, setSavedResultId] = useState<string | null>(null);
-  const [savedDeleteToken, setSavedDeleteToken] = useState<string | null>(null);
+  const [savedResultId, setSavedResultId] = useState<string | null>(() => readStoredDeleteRecord()?.resultId ?? null);
+  const [savedDeleteToken, setSavedDeleteToken] = useState<string | null>(() => readStoredDeleteRecord()?.deleteToken ?? null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -262,7 +303,7 @@ function App() {
   const currentDefinition = useMemo(() => TEST_DEFINITIONS.find((item) => item.id === currentTest), [currentTest]);
   const stepIndex = screen === 'environment' ? 0 : screen === 'profile' ? 1 : screen === 'preferences' ? 2 : screen === 'consent' ? 3 : screen === 'calibration' ? 4 : 0;
 
-  const reset = () => { if (savedResultId) sessionStorage.removeItem(`lol-skill-lab:delete-token:${savedResultId}`); setScreen('landing'); setResult(null); setTestResults([]); setSavedResultId(null); setSavedDeleteToken(null); setRiotContext(null); setConsent(false); setProfile({ displayName: '', experience: 'beginner', preferredLane: 'ALL' }); setPreferences(DEFAULT_PREFERENCES); setTestQueue(DEFAULT_TEST_QUEUE); setQueueIndex(0); setFeedbackOpen(false); setShareOpen(false); setNotice(null); setJourney('quick'); };
+  const reset = () => { setScreen('landing'); setResult(null); setTestResults([]); const stored = readStoredDeleteRecord(); setSavedResultId(stored?.resultId ?? null); setSavedDeleteToken(stored?.deleteToken ?? null); setRiotContext(null); setConsent(false); setProfile({ displayName: '', experience: 'beginner', preferredLane: 'ALL' }); setPreferences(DEFAULT_PREFERENCES); setTestQueue(DEFAULT_TEST_QUEUE); setQueueIndex(0); setFeedbackOpen(false); setShareOpen(false); setNotice(null); setJourney('quick'); };
   const beginTests = (mode: JourneyMode, ids = DEFAULT_TEST_QUEUE, previous: TestResult[] = []) => { setJourney(mode); setTestQueue(mode === 'quick' || mode === 'detailed' ? createDiagnosticTestQueue(Date.now()) : ids); setQueueIndex(0); setTestResults(previous); setScreen('testing'); setNotice(null); };
   const finishTest = (testResult: TestResult) => {
     const nextResults = [...testResults.filter((item) => item.testId !== testResult.testId), testResult];
@@ -277,18 +318,21 @@ function App() {
     if (!consent || !result) return;
     try {
       const configVersions = Object.fromEntries(Object.entries(runtimeConfig.manifest).filter(([, value]) => typeof value === 'string'));
-      const response = await fetch('/api/diagnosis-results', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ diagnosisVersion: '1.0.0', consentToSave: true, abilityVector: result.abilities, subscores: result.subscores, confidence: result.confidence, recommendations: result.recommendations, aptitudeTypes: { primary: result.aptitudeTitle.id, ruleVersion: typeof runtimeConfig.manifest.aptitudeRuleVersion === 'string' ? runtimeConfig.manifest.aptitudeRuleVersion : '1.0.0' }, configVersions: { ...configVersions, source: runtimeConfig.source }, ...(riotContext ? { riotContext } : {}), createdAt: result.createdAt ?? new Date().toISOString() }) });
+      const response = await fetch('/api/diagnosis-results', { method: 'POST', headers: apiHeaders(), body: JSON.stringify({ diagnosisVersion: '1.0.0', consentToSave: true, abilityVector: result.abilities, subscores: result.subscores, confidence: result.confidence, recommendations: result.recommendations, aptitudeTypes: { primary: result.aptitudeTitle.id, ruleVersion: typeof runtimeConfig.manifest.aptitudeRuleVersion === 'string' ? runtimeConfig.manifest.aptitudeRuleVersion : '1.0.0' }, configVersions: { ...configVersions, source: runtimeConfig.source }, ...(riotContext ? { riotContext } : {}), createdAt: result.createdAt ?? new Date().toISOString() }) });
       if (!response.ok) throw new Error('save failed');
       const body = await response.json() as { resultId: string; deleteToken: string };
-      setSavedResultId(body.resultId); setSavedDeleteToken(body.deleteToken); sessionStorage.setItem(`lol-skill-lab:delete-token:${body.resultId}`, body.deleteToken); setNotice('診断結果を匿名保存しました。削除tokenはこのセッションでのみ保持します。');
+      const createdAt = Date.parse(result.createdAt ?? '');
+      const expiresAt = new Date((Number.isNaN(createdAt) ? Date.now() : createdAt) + 90 * 24 * 60 * 60 * 1000).toISOString();
+      const persisted = writeStoredDeleteRecord({ resultId: body.resultId, deleteToken: body.deleteToken, expiresAt });
+      setSavedResultId(body.resultId); setSavedDeleteToken(body.deleteToken); setNotice(persisted ? '診断結果を匿名保存しました。削除tokenはこの端末に保管しています。保存期間は90日です。' : '診断結果を匿名保存しました。このタブを閉じる前に削除できます。保存期間は90日です。');
     } catch { setNotice('保存サーバーに接続できませんでした。結果はこの画面で確認できます。'); }
   };
-  const deleteResult = async () => { if (!savedResultId || !savedDeleteToken) { setNotice('このセッションでは削除tokenが見つかりません。'); return; } try { const response = await fetch(`/api/diagnosis-results/${savedResultId}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deleteToken: savedDeleteToken }) }); if (!response.ok) throw new Error('delete failed'); sessionStorage.removeItem(`lol-skill-lab:delete-token:${savedResultId}`); setSavedResultId(null); setSavedDeleteToken(null); setNotice('保存した診断結果を削除しました。'); } catch { setNotice('削除に失敗しました。少し時間をおいて再試行してください。'); } };
+  const deleteResult = async () => { if (!savedResultId || !savedDeleteToken) { setNotice('この端末には削除tokenが見つかりません。'); return; } try { const response = await fetch(`/api/diagnosis-results/${savedResultId}`, { method: 'DELETE', headers: apiHeaders(), body: JSON.stringify({ deleteToken: savedDeleteToken }) }); if (!response.ok) throw new Error('delete failed'); clearStoredDeleteRecord(); setSavedResultId(null); setSavedDeleteToken(null); setNotice('保存した診断結果を削除しました。'); } catch { setNotice('削除に失敗しました。少し時間をおいて再試行してください。'); } };
   const submitFeedback = async (satisfaction: 'satisfied' | 'partial' | 'disagree', comment: string) => { try { await submitFeedbackRequest({ diagnosisVersion: '1.0.0', satisfaction, comment }); setNotice('フィードバックを受け取りました。ありがとうございます。'); } catch { setNotice('フィードバックをこの環境から送信できませんでした。'); } setFeedbackOpen(false); };
   const downloadShare = async () => { if (!shareRef.current) return; try { const dataUrl = await toPng(shareRef.current, { pixelRatio: 2, cacheBust: true }); const link = document.createElement('a'); link.download = 'lol-skill-lab-result.png'; link.href = dataUrl; link.click(); setNotice('結果カードを画像として保存しました。'); } catch { setNotice('結果カードの生成に失敗しました。'); } };
 
   let content: React.ReactNode;
-  if (screen === 'landing') content = <LandingScreen onStart={() => setScreen('environment')} />;
+  if (screen === 'landing') content = <LandingScreen onStart={() => setScreen('environment')} hasSavedResult={Boolean(savedResultId && savedDeleteToken)} onDeleteSaved={deleteResult} />;
   if (screen === 'environment') content = <EnvironmentScreen onContinue={() => setScreen('profile')} />;
   if (screen === 'profile') content = <ProfileScreen profile={profile} setProfile={setProfile} onContinue={() => setScreen('preferences')} />;
   if (screen === 'preferences') content = <PreferencesScreen preferences={preferences} setPreferences={setPreferences} onContinue={() => setScreen('consent')} />;

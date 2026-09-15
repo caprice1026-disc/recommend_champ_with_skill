@@ -62,6 +62,10 @@ h3 { line-height: 1.4; }
 .text-button:hover { color: var(--teal); }
 .hero-trust { display: flex; gap: 28px; margin-top: 66px; color: var(--muted); font: 10px var(--mono); }
 .hero-trust b { display: block; color: var(--ink); font: 25px var(--sans); margin-bottom: 4px; }
+.saved-result-card { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 24px; padding: 13px 15px; border: 1px solid rgba(83, 211, 196, .28); background: rgba(83, 211, 196, .05); }
+.saved-result-card strong, .saved-result-card small { display: block; }
+.saved-result-card strong { color: var(--ink); font-size: 12px; }
+.saved-result-card small { margin-top: 5px; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .hero-visual { min-height: 560px; position: relative; display: grid; place-items: center; }
 .hero-visual__grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(83, 211, 196, .07) 1px, transparent 1px), linear-gradient(90deg, rgba(83, 211, 196, .07) 1px, transparent 1px); background-size: 44px 44px; mask-image: radial-gradient(circle, #000, transparent 70%); transform: perspective(650px) rotateX(50deg) rotateZ(-15deg) scale(1.4); opacity: .55; }
 .hero-visual__orb { position: absolute; border-radius: 50%; filter: blur(2px); }

@@ -1,4 +1,4 @@
-import { findRiotAccount, getRiotProfileCache, upsertRiotAccount, upsertRiotProfileCache } from '../repositories/d1';
+import { deleteExpiredRiotData, findRiotAccount, getRiotProfileCache, RIOT_RETENTION_HOURS, upsertRiotAccount, upsertRiotProfileCache } from '../repositories/d1';
 import type { D1DatabaseLike, WorkerEnv } from '../types';
 
 const ACCOUNT_HOSTS = {
@@ -19,6 +19,7 @@ export class RiotUpstreamError extends Error {
 }
 
 export async function verifyRiotId(input: { gameName: string; tagLine: string; platformRegion: keyof typeof ACCOUNT_HOSTS }, env: WorkerEnv, db: D1DatabaseLike): Promise<{ verified: true; platformRegion: string; fetchedAt: string }> {
+  await deleteExpiredRiotData(db);
   const existing = await findRiotAccount(db, input);
   if (existing) {
     const cached = await getRiotProfileCache(db, existing.puuid, ACCOUNT_CACHE_KEY);
@@ -47,7 +48,7 @@ export async function verifyRiotId(input: { gameName: string; tagLine: string; p
   const account = await response.json() as { puuid?: unknown; gameName?: unknown; tagLine?: unknown };
   if (typeof account.puuid !== 'string' || account.puuid.length < 10) throw new RiotUpstreamError(502, 'Riot APIの応答を確認できませんでした');
   const fetchedAt = new Date().toISOString();
-  await upsertRiotAccount(db, { puuid: account.puuid, gameName: typeof account.gameName === 'string' ? account.gameName : input.gameName, tagLine: typeof account.tagLine === 'string' ? account.tagLine : input.tagLine, platformRegion: input.platformRegion, verifiedAt: fetchedAt });
+  await upsertRiotAccount(db, { puuid: account.puuid, gameName: typeof account.gameName === 'string' ? account.gameName : input.gameName, tagLine: typeof account.tagLine === 'string' ? account.tagLine : input.tagLine, platformRegion: input.platformRegion, verifiedAt: fetchedAt, expiresAt: new Date(Date.now() + RIOT_RETENTION_HOURS * 60 * 60 * 1000).toISOString() });
   await upsertRiotProfileCache(db, {
     puuid: account.puuid,
     cacheKey: ACCOUNT_CACHE_KEY,

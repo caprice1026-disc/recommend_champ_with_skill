@@ -1,3 +1,5 @@
+import { apiHeaders } from '../../data/clientSession';
+
 export const RIOT_REGIONS = ['americas', 'asia', 'europe', 'sea'] as const;
 
 export type RiotRegion = typeof RIOT_REGIONS[number];
@@ -30,7 +32,7 @@ function isRegion(value: unknown): value is RiotRegion {
 export async function verifyRiotId(input: RiotVerificationInput, fetcher: FetchLike = fetch): Promise<PublicRiotContext> {
   const response = await fetcher('/api/riot/verify', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: apiHeaders(),
     body: JSON.stringify({ ...input, consentToRiot: true }),
   });
   let body: unknown;

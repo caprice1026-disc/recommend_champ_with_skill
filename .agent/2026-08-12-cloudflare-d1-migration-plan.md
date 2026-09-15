@@ -22,6 +22,7 @@
 - [x] (2026-08-12) README、CI、ExecPlanを更新した。最終監査で新規Issue #29〜#37を登録し、修正・検証後にクローズする。
 - [x] (2026-08-12) 監査修正をコミット`d7d3a69`、追加監査修正を`4bf6198`として`main`へpushした。GitHub Issue #29〜#38へ修正内容をコメントし、すべてクローズした。現在のOpen Issueは0件である。
 - [x] (2026-08-12) 最終コード監査でIssue #39を登録し、クリック精度の実測サブスコア欠落をTDDで修正・検証した。修正コミット`d6d687e`を`main`へpushし、修正コメント後にIssue #39を`completed`でクローズした。
+- [x] (2026-09-15) 追加監査でIssue #40〜#43を確認し、Rate Limiting binding、診断・RiotデータのTTL cleanup、保存結果の再訪削除導線、外部通信表示の修正を実装した。全67テスト、lint、設定・カタログ検証、build、local D1 migration、Worker smokeを再確認した。
 - [ ] Cloudflare本番Previewを認証済みアカウントと実在D1 IDで検証し、検証後に旧構成を削除する。
 
 ## Surprises & Discoveries
@@ -36,6 +37,8 @@
   Evidence: Cloudflare D1 migrationsおよびWrangler commandsの公式資料を2026-08-12に確認した。
 - Observation: 設計書の日付`2026-08-12`は、この環境にインストールされたMiniflareでは未来日として扱われ、Vite開発サーバーを起動できなかった。
   Evidence: `ERR_FUTURE_COMPATIBILITY_DATE`。互換性を保つため、Wrangler設定を実行環境でサポートされる直近日`2026-08-11`へ設定した。
+- Observation: Wranglerの`/cdn-cgi/local/scheduled?format=json`は、現行Workerのcleanup SQLが直接D1で評価でき、scheduled handlerのユニットテストも通る状態でも、Wrangler 4.120.1のProxyから`Network connection lost`を返した。
+  Evidence: ローカルHTTPのhealth/SPA/Rate Limitingは成功し、D1のschemaと`julianday(expires_at)`のSELECTも成功したが、scheduled HTTPだけがProxyエラーで終了した。Cloudflare Previewでの実Cron実行は未確認として残す。
 
 ## Decision Log
 
@@ -54,8 +57,16 @@
 - Decision: Cloudflareの本番D1 IDやRiot APIキーを捏造しない。設定ファイルには明確なplaceholderと手順を置く。
   Rationale: 外部状態を誤って変更せず、ローカル検証の再現性と秘密情報の安全性を保つため。
   Date/Author: 2026-08-12 / Codex
+- Decision: 公開POST APIの濫用対策はCloudflare Rate Limiting bindingを使い、通常の書き込み系をクライアントセッション単位、Riot確認を正規化Riot IDのSHA-256単位で制限する。
+  Rationale: IPをアプリ側で恒久保存せずにroute別の短時間制限を適用し、Riot上流とD1への不要なアクセスを先に抑止するため。
+  Date/Author: 2026-09-15 / Codex
+- Decision: 診断結果は90日、Riotアカウントと補助cacheは1時間を保持上限とし、Cron cleanupに加えてアクセス時cleanupも行う。削除tokenは端末`localStorage`へ保存期限付きで保持する。
+  Rationale: 保存・削除の説明と実際の保持期間を一致させ、タブ終了後にも利用者が削除できる一方、期限切れtokenをホーム画面へ残さないため。
+  Date/Author: 2026-09-15 / Codex
 
 ## Outcomes & Retrospective
+
+2026-09-15の追加監査では、公開Worker APIの濫用対策不足（#40）、Riotアカウントの無期限保存（#41）、再訪後の保存結果削除不能（#42）、ランディングの外部通信表示不整合（#43）を確認した。Rate Limiting bindingと匿名セッションヘッダー、診断90日・Riot 1時間のexpires_atおよびCron/lazy cleanup、localStorageの期限付きdeleteToken、同意画面とUI回帰テストを追加し、Issue #40〜#43を修正後にクローズする。全13ファイル67テスト、lint、config/catalog検証、build、local D1 migration、dry-run、Workerのhealth/SPA/feedback rate limit smokeを通過した。Wrangler 4.120.1のscheduled HTTPテストだけはProxyの`Network connection lost`で失敗したが、Workerの直接scheduledテスト、D1 schema、cleanup SQL評価は成功しているため、アプリ不具合とは断定せずPreview検証待ちとして記録する。
 
 ローカル移行と最終コード監査の修正は完了した。`npm run lint`、`npm run config:validate`、`npm run catalog:check`、62件のVitest、`npm run build`、D1 local migration、Cloudflare Viteランタイムのhealth／SPA／保存／削除／feedback smoke testを通過した。監査ではDockerfileの旧frontend参照、feedback HTTPエラーの成功表示、判断時間の二重計上、Riotネットワーク例外、セッション同意の残留、Riot同意チェックボックスのキーボード操作不能、Workerの正規化値範囲不足、READMEのテスト件数・Secret手順不足をIssue #29〜#37として登録し、修正した。追加監査では集約フィールド内部へ生入力を混入できる問題をIssue #38として登録し、許可リスト・深さ・キー検証で修正した。Issue #39ではクリック精度テストの実測メトリクスが最終`subscores`へ引き継がれない問題を検出し、`clickAccuracy`をFeatureVectorへ戻す修正と回帰テストを追加した。ブラウザでは環境確認、全スキップ、同意、ポインター校正、QWER校正、概要、全8テスト、結果表示、保存・削除・feedback、再読み込み、SPA直接URL、モバイル幅を確認し、診断コアの移行前後同等性は固定入力の回帰テストで保持した。
 

@@ -220,6 +220,7 @@ lol_skill_lab_cloudflare_architecture_design.docx
 node_modules/
 dist/
 .wrangler/
+worker-configuration.d.ts
 .dev.vars
 *.local
 *.tsbuildinfo

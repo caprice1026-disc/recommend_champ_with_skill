@@ -1,3 +1,5 @@
+import { apiHeaders } from '../../data/clientSession';
+
 export interface FeedbackSubmissionInput {
   diagnosisVersion: string;
   satisfaction: 'satisfied' | 'partial' | 'disagree';
@@ -16,7 +18,7 @@ type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Respo
 export async function submitFeedback(input: FeedbackSubmissionInput, fetcher: FetchLike = fetch): Promise<void> {
   const response = await fetcher('/api/feedback', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: apiHeaders(),
     body: JSON.stringify({
       diagnosisVersion: input.diagnosisVersion,
       satisfaction: input.satisfaction,

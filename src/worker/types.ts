@@ -12,10 +12,16 @@ export interface AssetsFetcherLike {
   fetch(request: Request, init?: RequestInit): Promise<Response>;
 }
 
+export interface RateLimiterLike {
+  limit(input: { key: string }): Promise<{ success: boolean }>;
+}
+
 export interface WorkerEnv {
   DB?: D1DatabaseLike;
   ASSETS?: AssetsFetcherLike;
   RIOT_API_KEY?: string;
+  WRITE_RATE_LIMITER?: RateLimiterLike;
+  RIOT_RATE_LIMITER?: RateLimiterLike;
 }
 
 export interface PublicRiotContext {

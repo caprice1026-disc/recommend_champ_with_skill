@@ -12,6 +12,8 @@ League of Legendsのプレイ適性を、ブラウザ上の実測テストとプ
 
 生のクリック座標、キー入力列、フレーム軌道、個別試行ログはWorkerやD1へ送信しません。保存に同意した場合も、能力ベクトル、サブスコア、信頼度、推薦、称号、設定バージョンなどの集約値だけを保存します。
 
+保存・フィードバック・Riot ID確認は、利用者がそれぞれ選択した場合だけ外部通信を行います。ブラウザ内の匿名セッションキーは公開識別子として濫用対策のレート制限にだけ使い、診断結果やRiot IDの代わりにはしません。
+
 ## 必要環境
 
 - Node.js 22以上
@@ -46,7 +48,7 @@ DockerでWorkers + Static Assetsのローカル相当環境を8080番ポート�
 
     Copy-Item .dev.vars.example .dev.vars
 
-Riot ID確認は同意画面の任意パネルから実行でき、診断結果保存とは別の同意を要求します。初期実装はACCOUNT-V1によるRiot ID確認と最小限の補助情報に限定し、Riot情報でabilityVectorや推薦スコアを補正しません。確認成功後にクライアント・保存payloadへ渡るのは`verified`、`platformRegion`、`fetchedAt`だけで、PUUIDや上流レスポンスは返しません。Riot APIキー未設定・ID不在・レート制限でも診断自体は継続できます。
+Riot ID確認は同意画面の任意パネルから実行でき、診断結果保存とは別の同意を要求します。初期実装はACCOUNT-V1によるRiot ID確認と最小限の補助情報に限定し、Riot情報でabilityVectorや推薦スコアを補正しません。確認成功後にクライアント・保存payloadへ渡るのは`verified`、`platformRegion`、`fetchedAt`だけで、PUUIDや上流レスポンスは返しません。Riot APIキー未設定・ID不在・レート制限でも診断自体は継続できます。Riotアカウントと補助キャッシュは1時間で期限切れになり、Cron Triggerまたは次回アクセス時のcleanupで削除されます。
 
 ## 設定検証とカタログ
 
@@ -69,7 +71,9 @@ Riot ID確認は同意画面の任意パネルから実行でき、診断結果�
 
 ブラウザでは、環境確認、プロフィール、好みの回答または全スキップ、保存同意、任意のRiot ID確認、校正、全テスト、結果、詳細診断・再テスト、任意保存、deleteTokenを使った削除、フィードバックを確認します。
 
-保存APIは`consentToSave: true`を必須とし、保存成功時に`resultId`と一度だけ使う`deleteToken`を返します。deleteTokenはハッシュだけがD1に保存されます。
+保存APIは`consentToSave: true`を必須とし、保存成功時に`resultId`と一度だけ使う`deleteToken`を返します。deleteTokenはハッシュだけがD1に保存されます。削除tokenは保存期限とともに同じ端末の`localStorage`へ保持し、結果画面とホーム画面から削除できます。保存結果は90日で自動削除され、期限切れの端末側記録も表示前に破棄されるため、共有端末ではtokenを保持しないでください。
+
+WorkerにはCloudflare Rate Limiting bindingを設定しています。保存・削除・フィードバックはクライアントセッション単位で1分10回、Riot確認はRiot IDのハッシュ単位で1分3回を上限とし、超過時は`429 RATE_LIMITED`を返します。`wrangler.jsonc`の`namespace_id`はCloudflareアカウント内で一意な正の整数へ置き換えてください。Rate Limiting bindingが未設定のローカル単体テストでは制限を適用せず、APIの契約を検証できます。
 
 ## Cloudflare deploy
 
@@ -81,14 +85,14 @@ Riot ID確認は同意画面の任意パネルから実行でき、診断結果�
     npx wrangler secret put RIOT_API_KEY
     npm.cmd run deploy
 
-Cloudflareの料金、無料枠、D1容量、WorkerとRiot APIのレート制限は現在の公式資料を確認してから運用してください。Previewでhealth、SPA直接URL、診断、保存・削除、フィードバック、Riot確認を検証してから本番へ反映します。
+Cloudflareの料金、無料枠、D1容量、WorkerとRiot APIのレート制限は現在の公式資料を確認してから運用してください。Previewでhealth、SPA直接URL、診断、保存・削除、フィードバック、Riot確認、429制限、Cron cleanupを検証してから本番へ反映します。
 
 ## 実装上の注意
 
 - Riot ID確認の成功結果は、PUUIDをクライアントへ返さず、Worker内で1時間だけD1へキャッシュします。期限切れ・破損キャッシュは再確認へフォールバックします。
 - メンタル安定性テストの各フェーズは、画面再レンダーでタイマーがリセットされないように固定した時間計測で進行します。
 - 保存APIは本文のContent-Lengthがない場合も実バイト数を確認し、256 KiBを超える入力を拒否します。
-- 2026-08-12時点のローカル確認では、13ファイル62テスト、型チェック、設定検証、カタログ同期確認、Vite/Workerビルド、ローカルD1マイグレーション、Workers相当のhealth/SPA/保存・削除・フィードバックを確認済みです。Cloudflare PreviewはWrangler認証または一時Previewの明示許可が必要です。
+- 2026-09-15時点のローカル確認では、Workerの期限切れcleanupとRate Limiting bindingを含む13ファイル67テスト、型チェック、設定検証、カタログ同期確認、Vite/Workerビルド、ローカルD1マイグレーション、Workers相当のhealth/SPA/保存・削除・フィードバックを確認済みです。Cloudflare PreviewはWrangler認証または一時Previewの明示許可が必要です。
 
 ## 旧構成について
 
