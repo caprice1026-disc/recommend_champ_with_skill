@@ -13,10 +13,19 @@ function buttonByText(container: HTMLElement, text: string): HTMLButtonElement {
 
 async function navigateToConsent(container: HTMLElement) {
   act(() => { buttonByText(container, '診断をはじめる').click(); });
-  await act(async () => { vi.advanceTimersByTime(700); });
+  act(() => { buttonByText(container, 'ここをクリックして確認').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 })); });
+  for (const key of ['q', 'w', 'e', 'r']) act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })); });
   act(() => { buttonByText(container, 'プロフィールを設定する').click(); });
   act(() => { buttonByText(container, 'プレイの好みへ進む').click(); });
   act(() => { buttonByText(container, 'すべてスキップして進む').click(); });
+}
+
+function navigateToPreferences(container: HTMLElement) {
+  act(() => { buttonByText(container, '診断をはじめる').click(); });
+  act(() => { buttonByText(container, 'ここをクリックして確認').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 })); });
+  for (const key of ['q', 'w', 'e', 'r']) act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })); });
+  act(() => { buttonByText(container, 'プロフィールを設定する').click(); });
+  act(() => { buttonByText(container, 'プレイの好みへ進む').click(); });
 }
 
 describe('App diagnostic session boundary', () => {
@@ -26,6 +35,44 @@ describe('App diagnostic session boundary', () => {
     sessionStorage.clear();
     vi.unstubAllGlobals();
     document.body.innerHTML = '';
+  });
+
+  it('requires real pointer and QWER input before leaving the environment check', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => { root.render(<App />); });
+    act(() => { buttonByText(container, '診断をはじめる').click(); });
+
+    const profileButton = buttonByText(container, 'プロフィールを設定する');
+    expect(profileButton.disabled).toBe(true);
+    expect(container.textContent).toContain('Q → W → E → R');
+
+    act(() => { buttonByText(container, 'ここをクリックして確認').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 })); });
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q', bubbles: true })); });
+    expect(profileButton.disabled).toBe(true);
+    for (const key of ['w', 'e', 'r']) act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })); });
+    expect(profileButton.disabled).toBe(false);
+
+    act(() => { root.unmount(); });
+  });
+
+  it('removes an earlier answer when that question is later skipped', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => { root.render(<App />); });
+    navigateToPreferences(container);
+
+    act(() => { container.querySelector<HTMLButtonElement>('button[aria-label="100%"]')?.click(); });
+    act(() => { buttonByText(container, '← 前の質問').click(); });
+    act(() => { buttonByText(container, 'この質問をスキップ →').click(); });
+    act(() => { buttonByText(container, '← 前の質問').click(); });
+
+    expect(container.textContent).toContain('この質問はスキップ中');
+    expect(container.querySelector('.likert button.is-selected')).toBeNull();
+    expect(container.textContent).toContain('スキップを取り消す');
+    act(() => { root.unmount(); });
   });
 
   it('requires fresh save consent after returning home and starting again', async () => {
@@ -42,6 +89,7 @@ describe('App diagnostic session boundary', () => {
     expect(saveConsent?.checked).toBe(true);
 
     act(() => { container.querySelector<HTMLButtonElement>('button[aria-label="LoLスキルラボ ホーム"]')?.click(); });
+    act(() => { container.querySelector<HTMLButtonElement>('.leave-dialog button.button--primary')?.click(); });
     await navigateToConsent(container);
     const newSaveConsent = container.querySelector<HTMLInputElement>('.consent-card input');
     expect(newSaveConsent?.checked).toBe(false);
